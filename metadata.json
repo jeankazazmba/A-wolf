@@ -1,0 +1,6 @@
+{
+  "name": "A-Wolf",
+  "description": "Plateforme d'études et de gestion collaborative en temps réel avec emploi du temps, gestion de ressources, mode focus (Pomodoro, Chronomètre, Ambiances), statistiques et rappels.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

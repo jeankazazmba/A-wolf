@@ -1,0 +1,170 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A user-created task that can have subtasks",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "priority": { "type": "string" },
+        "group": { "type": "string" },
+        "star": { "type": "boolean" },
+        "subTasks": { "type": "array" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "title",
+        "completed",
+        "priority",
+        "group",
+        "star",
+        "subTasks",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "FocusSession": {
+      "title": "FocusSession",
+      "description": "A recorded focus timer session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "duration": { "type": "number" },
+        "timestamp": { "type": "string" },
+        "taskRef": { "type": "string" },
+        "type": { "type": "string", "enum": ["Pomodoro", "Long"] },
+        "ownerId": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "duration",
+        "timestamp",
+        "taskRef",
+        "type",
+        "ownerId"
+      ]
+    },
+    "Reminder": {
+      "title": "Reminder",
+      "description": "A user reminder item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "deadline": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "title",
+        "deadline",
+        "completed",
+        "active",
+        "ownerId",
+        "createdAt"
+      ]
+    },
+    "Note": {
+      "title": "Note",
+      "description": "A saved markdown or plain text note",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "title",
+        "content",
+        "updatedAt",
+        "ownerId"
+      ]
+    },
+    "CalendarEvent": {
+      "title": "CalendarEvent",
+      "description": "A student scheduled calendar event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["Cours", "Devoirs", "Projets", "Réunions", "Rappels", "Autres"] },
+        "time": { "type": "string" },
+        "day": { "type": "number" },
+        "subject": { "type": "string" },
+        "color": { "type": "string" },
+        "room": { "type": "string" },
+        "dateStr": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "title",
+        "type",
+        "time",
+        "day",
+        "subject",
+        "color",
+        "ownerId"
+      ]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "A shared course or study file resource",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "zip", "image", "doc", "other"] },
+        "url": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": [
+        "id",
+        "title",
+        "category",
+        "type",
+        "ownerId"
+      ]
+    }
+  },
+  "firestore": {
+    "tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of tasks"
+    },
+    "focus_sessions/{sessionId}": {
+      "schema": "FocusSession",
+      "description": "Collection of recorded focus sessions"
+    },
+    "reminders/{reminderId}": {
+      "schema": "Reminder",
+      "description": "Collection of user reminders"
+    },
+    "notes/{noteId}": {
+      "schema": "Note",
+      "description": "Collection of user-created notes"
+    },
+    "calendar_events/{eventId}": {
+      "schema": "CalendarEvent",
+      "description": "Collection of user-created calendar events"
+    },
+    "resources/{resourceId}": {
+      "schema": "Resource",
+      "description": "Collection of user-created shared course resources"
+    }
+  }
+}
