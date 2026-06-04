@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# A-Wolf
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/f2de25b5-e780-4f42-92c4-60dd40a819bb
+Application React + Vite pour gestion de tâches, calendrier et collaboration en temps réel.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js et un serveur PostgreSQL actif
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Set `DATABASE_URL` in `.env` ou dans votre environnement, par exemple :
+   `postgresql://user:password@localhost:5432/awolf`
+3. Si vous utilisez l’API Google Calendar côté serveur, ajoutez également :
+   `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
+4. Initialisez le schéma PostgreSQL :
+   `npm run db:init`
+5. Lancer l'application :
    `npm run dev`
+
+6. Pour lancer la version desktop Electron, ouvrez un second terminal et exécutez :
+   `npm run electron:dev`
+
+7. Vérifiez que votre projet Firebase est configuré et que `firebase-applet-config.json` contient les bons paramètres de projet. Le login Google s’appuie sur Firebase Auth et des scopes Google Calendar.
+
+6. Ouvrez l'URL de développement locale affichée dans le terminal si nécessaire.

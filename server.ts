@@ -4,6 +4,17 @@ import path from "path";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import { Task, Course, Resource, Message, AppNotification, ShareState } from "./src/types";
+import {
+  initializeDatabase,
+  loadAppState,
+  insertTask,
+  replaceTasks,
+  insertCourse,
+  insertResource,
+  insertMessage,
+  insertNotification,
+  markNotificationsRead,
+} from "./src/lib/db";
 
 // Server memory workspace state
 let serverState: ShareState = {
@@ -29,6 +40,12 @@ async function start() {
   };
 
   let focusSessions: any[] = [];
+
+  await initializeDatabase();
+  const persistedState = await loadAppState();
+  serverState = persistedState.state;
+  userSettings = { ...userSettings, ...persistedState.userSettings };
+  focusSessions = persistedState.focusSessions;
 
   // Helper mock calendar events generator matching raw Google Calendar structures
   function getServerDynamicMockEvents() {
@@ -339,17 +356,18 @@ async function start() {
               role: payload.role || "Étudiant",
             };
             serverState.messages.push(newMsg);
-            // Slice to keep reasonable memory
             if (serverState.messages.length > 100) {
               serverState.messages.shift();
             }
             broadcastState("chat_message", newMsg);
+            insertMessage(newMsg).catch((err) => console.error("Failed to save message:", err));
             break;
           }
 
           case "update_tasks": {
             serverState.tasks = payload.tasks;
             broadcastState("update_tasks");
+            replaceTasks(payload.tasks).catch((err) => console.error("Failed to replace tasks:", err));
             break;
           }
 
@@ -364,6 +382,7 @@ async function start() {
             };
             serverState.tasks.push(newTask);
             broadcastState("add_task", newTask);
+            insertTask(newTask).catch((err) => console.error("Failed to save task:", err));
             break;
           }
 
@@ -379,6 +398,7 @@ async function start() {
             };
             serverState.courses.push(newCourse);
             broadcastState("add_course", newCourse);
+            insertCourse(newCourse).catch((err) => console.error("Failed to save course:", err));
             break;
           }
 
@@ -392,6 +412,7 @@ async function start() {
             };
             serverState.resources.unshift(newRes);
             broadcastState("add_resource", newRes);
+            insertResource(newRes).catch((err) => console.error("Failed to save resource:", err));
             break;
           }
 
@@ -412,6 +433,7 @@ async function start() {
             };
             serverState.notifications.unshift(btnNotif);
             broadcastState("add_notification", btnNotif);
+            insertNotification(btnNotif).catch((err) => console.error("Failed to save notification:", err));
             break;
           }
 
@@ -421,6 +443,7 @@ async function start() {
               read: true,
             }));
             broadcastState("mark_notifications_read");
+            markNotificationsRead().catch((err) => console.error("Failed to mark notifications read:", err));
             break;
           }
 
