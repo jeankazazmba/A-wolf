@@ -50,8 +50,8 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const [userProfile, setUserProfile] = useState({
-    name: "Alex Martin",
-    email: "bagumakazamba@gmail.com",
+    name: "Étudiant",
+    email: "utilisateur@exemple.com",
     avatar: "bg-violet-600",
     study: "Étudiant en Informatique",
   });

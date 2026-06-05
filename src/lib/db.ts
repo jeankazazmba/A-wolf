@@ -3,16 +3,34 @@ import { Pool } from "pg";
 import type { ShareState, Task, Course, Resource, Message, AppNotification } from "../types";
 
 const connectionString = process.env.DATABASE_URL || process.env.PG_CONNECTION_STRING;
-if (!connectionString) {
-  throw new Error("DATABASE_URL or PG_CONNECTION_STRING must be set to use PostgreSQL.");
-}
+export const usePostgres = Boolean(connectionString);
 
-export const pool = new Pool({
-  connectionString,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined,
-});
+export const pool = usePostgres
+  ? new Pool({ connectionString, ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : undefined })
+  : (null as unknown as Pool);
+
+// In local-only / development mode (no DATABASE_URL), provide a lightweight in-memory fallback
+const inMemoryStore: {
+  tasks: Task[];
+  courses: Course[];
+  resources: Resource[];
+  messages: Message[];
+  notifications: AppNotification[];
+  appSettings: Record<string, any>;
+  focusSessions: any[];
+} = {
+  tasks: [],
+  courses: [],
+  resources: [],
+  messages: [],
+  notifications: [],
+  appSettings: {},
+  focusSessions: [],
+};
 
 export async function initializeDatabase(): Promise<void> {
+  if (!usePostgres) return Promise.resolve();
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tasks (
       id TEXT PRIMARY KEY,
@@ -79,6 +97,20 @@ export async function initializeDatabase(): Promise<void> {
 }
 
 export async function loadAppState(): Promise<{ state: ShareState; userSettings: Record<string, any>; focusSessions: any[] }> {
+  if (!usePostgres) {
+    const state: ShareState = {
+      tasks: inMemoryStore.tasks || [],
+      courses: inMemoryStore.courses || [],
+      resources: inMemoryStore.resources || [],
+      messages: inMemoryStore.messages || [],
+      notifications: inMemoryStore.notifications || [],
+      focusedUserCount: 1,
+    };
+    const userSettings = inMemoryStore.appSettings || {};
+    const focusSessions = inMemoryStore.focusSessions || [];
+    return { state, userSettings, focusSessions };
+  }
+
   const [taskResult, courseResult, resourceResult, messageResult, notificationResult, settingsResult, focusSessionResult] = await Promise.all([
     pool.query("SELECT * FROM tasks ORDER BY title"),
     pool.query("SELECT * FROM courses ORDER BY title"),
@@ -154,6 +186,13 @@ export async function loadAppState(): Promise<{ state: ShareState; userSettings:
 }
 
 export async function insertTask(task: Task): Promise<void> {
+  if (!usePostgres) {
+    const idx = inMemoryStore.tasks.findIndex((t) => t.id === task.id);
+    if (idx >= 0) inMemoryStore.tasks[idx] = task as Task;
+    else inMemoryStore.tasks.push(task as Task);
+    return;
+  }
+
   await pool.query(
     `INSERT INTO tasks (id, title, category, date, priority, completed, star, subtasks)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -163,6 +202,11 @@ export async function insertTask(task: Task): Promise<void> {
 }
 
 export async function replaceTasks(tasks: Task[]): Promise<void> {
+  if (!usePostgres) {
+    inMemoryStore.tasks = tasks as Task[];
+    return;
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -184,6 +228,13 @@ export async function replaceTasks(tasks: Task[]): Promise<void> {
 }
 
 export async function insertCourse(course: Course): Promise<void> {
+  if (!usePostgres) {
+    const idx = inMemoryStore.courses.findIndex((c) => c.id === course.id);
+    if (idx >= 0) inMemoryStore.courses[idx] = course as Course;
+    else inMemoryStore.courses.push(course as Course);
+    return;
+  }
+
   await pool.query(
     `INSERT INTO courses (id, title, room, day, start_time, end_time, color, description)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -193,6 +244,13 @@ export async function insertCourse(course: Course): Promise<void> {
 }
 
 export async function insertResource(resource: Resource): Promise<void> {
+  if (!usePostgres) {
+    const idx = inMemoryStore.resources.findIndex((r) => r.id === resource.id);
+    if (idx >= 0) inMemoryStore.resources[idx] = resource as Resource;
+    else inMemoryStore.resources.push(resource as Resource);
+    return;
+  }
+
   await pool.query(
     `INSERT INTO resources (id, title, category, type, url, timestamp)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -202,6 +260,13 @@ export async function insertResource(resource: Resource): Promise<void> {
 }
 
 export async function insertMessage(message: Message): Promise<void> {
+  if (!usePostgres) {
+    const idx = inMemoryStore.messages.findIndex((m) => m.id === message.id);
+    if (idx >= 0) inMemoryStore.messages[idx] = message as Message;
+    else inMemoryStore.messages.push(message as Message);
+    return;
+  }
+
   await pool.query(
     `INSERT INTO messages (id, sender, avatar, text, timestamp, role)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -211,6 +276,13 @@ export async function insertMessage(message: Message): Promise<void> {
 }
 
 export async function insertNotification(notification: AppNotification): Promise<void> {
+  if (!usePostgres) {
+    const idx = inMemoryStore.notifications.findIndex((n) => n.id === notification.id);
+    if (idx >= 0) inMemoryStore.notifications[idx] = notification as AppNotification;
+    else inMemoryStore.notifications.push(notification as AppNotification);
+    return;
+  }
+
   await pool.query(
     `INSERT INTO notifications (id, title, content, type, timestamp, read)
      VALUES ($1, $2, $3, $4, $5, $6)
@@ -220,10 +292,20 @@ export async function insertNotification(notification: AppNotification): Promise
 }
 
 export async function markNotificationsRead(): Promise<void> {
+  if (!usePostgres) {
+    inMemoryStore.notifications = inMemoryStore.notifications.map((n) => ({ ...n, read: true }));
+    return;
+  }
+
   await pool.query(`UPDATE notifications SET read = true WHERE read = false`);
 }
 
 export async function clearNotifications(): Promise<void> {
+  if (!usePostgres) {
+    inMemoryStore.notifications = [];
+    return;
+  }
+
   await pool.query(`DELETE FROM notifications`);
 }
 

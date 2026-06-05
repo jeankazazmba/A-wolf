@@ -72,8 +72,10 @@ export const InteractiveTasksWithEmail: React.FC = () => {
   const [newDueDate, setNewDueDate] = useState("18 mai");
   const [newDueTime, setNewDueTime] = useState("09:00");
   const [newStarred, setNewStarred] = useState(false);
-  const [newEmail, setNewEmail] = useState("bagumakazamba@gmail.com");
+  const [newEmail, setNewEmail] = useState("");
   const [newRemindActive, setNewRemindActive] = useState(true);
+
+  const defaultTaskEmail = "utilisateur@exemple.com";
 
   // Active column displays and filters
   const [showFiltersDropdown, setShowFiltersDropdown] = useState(false);
@@ -86,7 +88,12 @@ export const InteractiveTasksWithEmail: React.FC = () => {
     const saved = localStorage.getItem("awolf_styled_tasks");
     if (saved) {
       try {
-        setTasks(JSON.parse(saved));
+        const parsed: InteractiveTask[] = JSON.parse(saved);
+        const sanitized = parsed.map((task) => ({
+          ...task,
+          email: task.email === "bagumakazamba@gmail.com" || !task.email ? defaultTaskEmail : task.email,
+        }));
+        setTasks(sanitized);
       } catch (e) {
         setTasks([]);
       }
@@ -107,7 +114,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "10:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: defaultTaskEmail,
         remindActive: true,
         group: "Aujourd'hui"
       },
@@ -120,7 +127,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "14:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Aujourd'hui"
       },
@@ -133,7 +140,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "16:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Aujourd'hui"
       },
@@ -146,7 +153,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "11:00",
         completed: false,
         starred: true,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: true,
         group: "Aujourd'hui"
       },
@@ -159,7 +166,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "18:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Aujourd'hui"
       },
@@ -172,7 +179,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "19:30",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Aujourd'hui"
       },
@@ -187,7 +194,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "09:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "À venir"
       },
@@ -200,7 +207,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "13:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: true,
         group: "À venir"
       },
@@ -213,7 +220,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "10:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "À venir"
       },
@@ -226,7 +233,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "15:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "À venir"
       },
@@ -239,7 +246,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "11:00",
         completed: false,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "À venir"
       },
@@ -254,7 +261,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "10:00",
         completed: true,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Terminées"
       },
@@ -267,7 +274,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "16:30",
         completed: true,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Terminées"
       },
@@ -280,7 +287,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
         dueTime: "18:00",
         completed: true,
         starred: false,
-        email: "bagumakazamba@gmail.com",
+        email: "utilisateur@exemple.com",
         remindActive: false,
         group: "Terminées"
       }
@@ -364,7 +371,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
       dueTime: newDueTime.trim() || "12:00",
       completed: newStatus === "Terminées",
       starred: newStarred,
-      email: newEmail.trim() || "bagumakazamba@gmail.com",
+      email: newEmail.trim() || defaultTaskEmail,
       remindActive: newRemindActive,
       group: newStatus === "Terminées" ? "Terminées" : assignedGroup
     };
@@ -391,7 +398,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
       dueTime: "Récurrent",
       completed: false,
       starred: false,
-      email: "bagumakazamba@gmail.com",
+      email: "utilisateur@exemple.com",
       remindActive: false,
       group: "Aujourd'hui"
     };

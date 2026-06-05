@@ -294,7 +294,8 @@ export async function fetchGoogleCalendarEvents(accessToken: string): Promise<Go
     return json.items || [];
   } catch (err) {
     console.error("Error fetching Google Calendar data directly:", err);
-    return getDynamicMockEvents();
+    // Ne pas renvoyer de fausses données en production si l'API Google échoue.
+    return [];
   }
 }
 
