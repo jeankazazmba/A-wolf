@@ -6,8 +6,10 @@
   "main": "electron/main.cjs",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:electron": "concurrently \"npm:dev\" \"npm:electron:wait\"",
     "db:init": "tsx ./src/lib/db.ts",
     "electron:dev": "electron electron/main.cjs",
+    "electron:wait": "wait-on http://localhost:3000 && electron electron/main.cjs",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
@@ -41,6 +43,8 @@
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
     "electron-builder": "^24.9.0",
+    "concurrently": "^8.2.0",
+    "wait-on": "^7.0.1",
     "tsx": "^4.22.4",
     "typescript": "~5.8.2",
     "vite": "^6.2.3"
