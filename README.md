@@ -4,22 +4,19 @@ Application React + Vite pour gestion de tâches, calendrier et collaboration en
 
 ## Run Locally
 
-**Prerequisites:** Node.js et un serveur PostgreSQL actif
+**Prerequisites:** Node.js
 
 1. Install dependencies:
    `npm install`
-2. Set `DATABASE_URL` in `.env` ou dans votre environnement, par exemple :
-   `postgresql://user:password@localhost:5432/awolf`
-3. Si vous utilisez l’API Google Calendar côté serveur, ajoutez également :
-   `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
-4. Initialisez le schéma PostgreSQL :
-   `npm run db:init`
-5. Lancer l'application :
-   `npm run dev`
-
-6. Pour lancer la version desktop Electron, ouvrez un second terminal et exécutez :
+2. Set the desktop OAuth client ID for Google Calendar access:
+   `export GOOGLE_OAUTH_CLIENT_ID="your_google_oauth_client_id"`
+   or on Windows PowerShell:
+   `$env:GOOGLE_OAUTH_CLIENT_ID="your_google_oauth_client_id"`
+3. Start the desktop app:
    `npm run electron:dev`
 
-7. Vérifiez que votre projet Firebase est configuré et que `firebase-applet-config.json` contient les bons paramètres de projet. Le login Google s’appuie sur Firebase Auth et des scopes Google Calendar.
+This app now stores all internal data locally in the user environment. No Firebase/Firestore sync is used for tasks, notes, reminders, focus sessions or in-app collaboration state.
 
-6. Ouvrez l'URL de développement locale affichée dans le terminal si nécessaire.
+For Google Calendar integration, the app uses Electron OAuth PKCE and stores Google tokens securely using the OS keychain via `keytar`.
+
+If you need the server component for other features, keep using `npm run dev` as before, but note that the desktop app itself does not send internal application data to external cloud storage.

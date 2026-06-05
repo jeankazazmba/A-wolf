@@ -4,28 +4,71 @@
 // proper OAuth redirect/popup implementation suited for Electron.
 
 const GOOGLE_ACCESS_TOKEN_KEY = "google_auth_access_token";
+const GOOGLE_AUTH_PAYLOAD_KEY = "google_auth_payload";
 
 type LocalUser = { displayName?: string; email?: string; uid?: string };
 
 let isSigningIn = false;
 let cachedAccessToken: string | null = localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
 
+async function electronGetAuthPayload(): Promise<any | null> {
+  if ((window as any).electronAPI?.getGoogleAuthPayload) {
+    return await (window as any).electronAPI.getGoogleAuthPayload();
+  }
+  return null;
+}
+
+async function electronSetAuthPayload(payload: any): Promise<void> {
+  if ((window as any).electronAPI?.setGoogleAuthPayload) {
+    await (window as any).electronAPI.setGoogleAuthPayload(payload);
+  }
+}
+
+async function electronDeleteAuthPayload(): Promise<void> {
+  if ((window as any).electronAPI?.deleteGoogleAuthPayload) {
+    await (window as any).electronAPI.deleteGoogleAuthPayload();
+  }
+}
+
 export const initAuth = (
   onAuthSuccess?: (user: LocalUser, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  // Immediately notify based on locally cached token
-  const restoredToken = cachedAccessToken || localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
-  if (restoredToken) {
-    const userJson = localStorage.getItem("google_auth_sim_user");
-    const user: LocalUser = userJson ? JSON.parse(userJson) : { displayName: "Google User", email: "user@local" };
-    if (onAuthSuccess) onAuthSuccess(user, restoredToken);
-  } else {
-    if (onAuthFailure) onAuthFailure();
-  }
+  let isActive = true;
 
-  // Return an unsubscribe/noop to match previous API
-  return () => {};
+  const hydrate = async () => {
+    try {
+      let restoredToken = cachedAccessToken;
+      let authPayload = null;
+
+      if (!restoredToken && (window as any).electronAPI?.getGoogleAuthPayload) {
+        authPayload = await electronGetAuthPayload();
+        restoredToken = authPayload?.access_token || null;
+      }
+
+      if (!restoredToken) {
+        restoredToken = localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
+      }
+
+      if (restoredToken && isActive) {
+        const userJson = localStorage.getItem("google_auth_sim_user");
+        const user: LocalUser = userJson ? JSON.parse(userJson) : { displayName: "Google User", email: "user@local" };
+        cachedAccessToken = restoredToken;
+        if (onAuthSuccess) onAuthSuccess(user, restoredToken);
+      } else if (isActive) {
+        if (onAuthFailure) onAuthFailure();
+      }
+    } catch (error) {
+      console.error("initAuth failed:", error);
+      if (isActive && onAuthFailure) onAuthFailure();
+    }
+  };
+
+  hydrate();
+
+  return () => {
+    isActive = false;
+  };
 };
 
 export const isRunningInIframe = (): boolean => {
@@ -43,24 +86,19 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
   }
   try {
     isSigningIn = true;
-    // If running inside Electron with the new preload API, use the main
-    // process to perform the PKCE loopback OAuth flow and return tokens.
-    if ((window as any).electronAPI && (window as any).electronAPI.startGoogleOAuth) {
-      try {
-        const tokenResp = await (window as any).electronAPI.startGoogleOAuth();
-        if (!tokenResp || !tokenResp.access_token) throw new Error("No access token returned from Electron OAuth");
-        cachedAccessToken = tokenResp.access_token;
-        localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
-        const user: LocalUser = { displayName: "Google User", email: "user@local" };
-        localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
-        return { user, accessToken: cachedAccessToken };
-      } catch (err) {
-        console.error("Electron OAuth failed:", err);
-        throw err;
+
+    if ((window as any).electronAPI?.startGoogleOAuth) {
+      const tokenResp = await (window as any).electronAPI.startGoogleOAuth();
+      if (!tokenResp || !tokenResp.access_token) {
+        throw new Error("No access token returned from Electron OAuth");
       }
+      cachedAccessToken = tokenResp.access_token;
+      await electronSetAuthPayload(tokenResp);
+      const user: LocalUser = { displayName: "Google User", email: "user@local" };
+      localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
+      return { user, accessToken: cachedAccessToken };
     }
 
-    // Fallback: prompt user to paste an OAuth access token.
     const token = window.prompt("Please paste your Google OAuth access token (or Cancel to abort):");
     if (!token) return null;
     cachedAccessToken = token;
@@ -77,12 +115,28 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken || localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
+  if (cachedAccessToken) {
+    return cachedAccessToken;
+  }
+
+  if ((window as any).electronAPI?.getGoogleAuthPayload) {
+    const payload = await electronGetAuthPayload();
+    if (payload?.access_token) {
+      cachedAccessToken = payload.access_token;
+      return cachedAccessToken;
+    }
+  }
+
+  const localToken = localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
+  if (localToken) {
+    cachedAccessToken = localToken;
+  }
+  return localToken;
 };
 
 export const logout = async () => {
-  await signOut(auth);
   cachedAccessToken = null;
+  await electronDeleteAuthPayload();
   localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
   localStorage.removeItem("google_auth_sim_user");
   localStorage.removeItem("google_auth_sim_token");

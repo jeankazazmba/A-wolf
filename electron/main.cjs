@@ -4,6 +4,10 @@ const isDev = require("electron-is-dev");
 const http = require("http");
 const crypto = require("crypto");
 const { URL } = require("url");
+const keytar = require("keytar");
+
+const GOOGLE_AUTH_SERVICE = "awolf-google-calendar";
+const GOOGLE_AUTH_ACCOUNT = "google_oauth";
 
 function base64URLEncode(str) {
   return str.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -105,6 +109,27 @@ ipcMain.handle("oauth:google", async (event, _clientId) => {
       authWindow.loadURL(authUrl);
     });
   });
+});
+
+ipcMain.handle("secure-store:set-google-auth", async (event, payload) => {
+  if (!payload) return null;
+  const value = typeof payload === "string" ? payload : JSON.stringify(payload);
+  await keytar.setPassword(GOOGLE_AUTH_SERVICE, GOOGLE_AUTH_ACCOUNT, value);
+  return true;
+});
+
+ipcMain.handle("secure-store:get-google-auth", async () => {
+  const value = await keytar.getPassword(GOOGLE_AUTH_SERVICE, GOOGLE_AUTH_ACCOUNT);
+  if (!value) return null;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+});
+
+ipcMain.handle("secure-store:delete-google-auth", async () => {
+  return await keytar.deletePassword(GOOGLE_AUTH_SERVICE, GOOGLE_AUTH_ACCOUNT);
 });
 
 app.whenReady().then(() => {
