@@ -32,7 +32,6 @@ import {
   Radio
 } from "lucide-react";
 import { useCollab } from "../context/CollabContext";
-import { subscribeFocusSessions, saveFocusSessionToCloud, FirestoreFocusSession } from "../lib/firestoreSync";
 import { motion, AnimatePresence } from "motion/react";
 
 interface SubTask {
@@ -49,8 +48,17 @@ interface FocusTask {
   subTasks: SubTask[];
 }
 
+interface FocusSession {
+  id: string;
+  duration: number;
+  timestamp: string;
+  taskRef: string;
+  type: "Pomodoro" | "Long";
+  ownerId?: string;
+}
+
 export const FocusZone: React.FC = () => {
-  const { triggerNotification, currentUser, isAuthLoading } = useCollab();
+  const { triggerNotification } = useCollab();
 
   // Active view tab in focus zone: "Pomodoro" | "Focus long" | "Personnalisé"
   const [activeTab, setActiveTab] = useState<"Pomodoro" | "Focus long" | "Personnalisé">("Pomodoro");
@@ -70,30 +78,32 @@ export const FocusZone: React.FC = () => {
   const [cyclesToday, setCyclesToday] = useState(0);
   const [streakDays, setStreakDays] = useState(7);
 
-  const [focusSessions, setFocusSessions] = useState<FirestoreFocusSession[]>([]);
+  const [focusSessions, setFocusSessions] = useState<FocusSession[]>([]);
 
-  // Real-time listener for focus session history log
+  // Load focus session history from local storage
   useEffect(() => {
-    if (currentUser) {
-      const unsub = subscribeFocusSessions(currentUser.uid, (cloudSessions) => {
-        const sorted = [...cloudSessions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const saved = localStorage.getItem("awolf_focus_sessions");
+    if (saved) {
+      try {
+        const parsed: FocusSession[] = JSON.parse(saved);
+        const sorted = [...parsed].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         setFocusSessions(sorted);
-        
-        // Dynamically compute stats from user history!
+
         const todayStr = new Date().toDateString();
-        const todayCount = sorted.filter(s => new Date(s.timestamp).toDateString() === todayStr).length;
+        const todayCount = sorted.filter((s) => new Date(s.timestamp).toDateString() === todayStr).length;
         setTodaySessions(todayCount);
         setCyclesToday(Math.min(todayCount, 6));
-      });
-      return () => unsub();
+      } catch {
+        setFocusSessions([]);
+        setTodaySessions(0);
+        setCyclesToday(0);
+      }
     } else {
-      // Local clean fallback for non-auth sessions
-      const defaultLogs: FirestoreFocusSession[] = [];
-      setFocusSessions(defaultLogs);
+      setFocusSessions([]);
       setTodaySessions(0);
       setCyclesToday(0);
     }
-  }, [currentUser]);
+  }, []);
 
   // Sound options
   const [activeAmbiance, setActiveAmbiance] = useState<"none" | "lofi" | "rain" | "theta" | "ocean" | "white">("none");
@@ -196,26 +206,16 @@ export const FocusZone: React.FC = () => {
     const durationMin = activeTab === "Pomodoro" ? pomodoroLength : activeTab === "Focus long" ? longFocusLength : customFocusLength;
     const sessionType = activeTab === "Focus long" ? "Long" : "Pomodoro";
 
-    if (currentUser) {
-      const sessionId = `fs_${Date.now()}`;
-      saveFocusSessionToCloud(currentUser.uid, {
-        id: sessionId,
-        duration: durationMin,
-        timestamp: new Date().toISOString(),
-        taskRef: activeTask ? activeTask.title : "Tâche de concentration",
-        type: sessionType
-      });
-    } else {
-      const newLocalSession: FirestoreFocusSession = {
-        id: `fs_local_${Date.now()}`,
-        duration: durationMin,
-        timestamp: new Date().toISOString(),
-        taskRef: activeTask ? activeTask.title : "Tâche de concentration",
-        type: sessionType,
-        ownerId: ""
-      };
-      setFocusSessions(prev => [newLocalSession, ...prev]);
-    }
+    const newLocalSession: FocusSession = {
+      id: `fs_local_${Date.now()}`,
+      duration: durationMin,
+      timestamp: new Date().toISOString(),
+      taskRef: activeTask ? activeTask.title : "Tâche de concentration",
+      type: sessionType,
+    };
+    const updatedSessions = [newLocalSession, ...focusSessions];
+    setFocusSessions(updatedSessions);
+    localStorage.setItem("awolf_focus_sessions", JSON.stringify(updatedSessions));
 
     triggerNotification(
       "Session de concentration terminée !",

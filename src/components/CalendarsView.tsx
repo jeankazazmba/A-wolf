@@ -32,7 +32,6 @@ import {
   GoogleCalendarEvent,
   isRunningInIframe
 } from "../lib/googleAuth";
-import { subscribeCalendarEvents, saveCalendarEventToCloud } from "../lib/firestoreSync";
 
 interface CalendarEvent {
   id: string;
@@ -192,28 +191,17 @@ export const CalendarsView: React.FC = () => {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
 
   useEffect(() => {
-    if (currentUser) {
-      const unsub = subscribeCalendarEvents(currentUser.uid, (cloudEvents) => {
-        if (cloudEvents && cloudEvents.length > 0) {
-          setEvents(cloudEvents as any[]);
-        } else {
-          setEvents([]);
-        }
-      });
-      return () => unsub();
-    } else if (!isAuthLoading) {
-      const saved = localStorage.getItem("awolf_calendar_events_backup");
-      if (saved) {
-        try {
-          setEvents(JSON.parse(saved));
-        } catch (e) {
-          setEvents([]);
-        }
-      } else {
+    const saved = localStorage.getItem("awolf_calendar_events_backup");
+    if (saved) {
+      try {
+        setEvents(JSON.parse(saved));
+      } catch (e) {
         setEvents([]);
       }
+    } else {
+      setEvents([]);
     }
-  }, [currentUser, isAuthLoading]);
+  }, []);
 
   // Modal form addition state
   const [isOpenAddModal, setIsOpenAddModal] = useState(false);
@@ -272,28 +260,14 @@ export const CalendarsView: React.FC = () => {
         triggerNotification(
           "Synchro GCal Échouée",
           "Sauvegarde en cours sur votre base d'étude locale uniquement.",
-          "error"
+          "warning"
         );
       });
     }
 
-    if (currentUser) {
-      saveCalendarEventToCloud(currentUser.uid, {
-        id: customEvent.id,
-        title: customEvent.title,
-        type: customEvent.type,
-        time: customEvent.time,
-        day: customEvent.day,
-        subject: customEvent.subject,
-        color: customEvent.color,
-        room: customEvent.room || "",
-        dateStr: customEvent.dateStr || ""
-      });
-    } else {
-      const updatedEvents = [...events, customEvent];
-      setEvents(updatedEvents);
-      localStorage.setItem("awolf_calendar_events_backup", JSON.stringify(updatedEvents));
-    }
+    const updatedEvents = [...events, customEvent];
+    setEvents(updatedEvents);
+    localStorage.setItem("awolf_calendar_events_backup", JSON.stringify(updatedEvents));
 
     setIsOpenAddModal(false);
     setNewEventTitle("");
@@ -340,6 +314,26 @@ export const CalendarsView: React.FC = () => {
     : [];
 
   const allVisibleEvents = [...events, ...gcalCalendarEvents];
+
+  const upcomingVisibleEvents = allVisibleEvents
+    .map((event) => {
+      const eventDate = event.dateStr
+        ? new Date(event.dateStr)
+        : new Date(currentDate.getFullYear(), currentDate.getMonth(), event.day || currentDate.getDate());
+      return { ...event, eventDate };
+    })
+    .filter((event) => !Number.isNaN(event.eventDate.getTime()))
+    .sort((a, b) => a.eventDate.getTime() - b.eventDate.getTime() || a.time.localeCompare(b.time))
+    .slice(0, 5);
+
+  const categorySummary = [
+    { label: "Cours", count: allVisibleEvents.filter((event) => event.type === "Cours").length, dot: "bg-indigo-600 text-indigo-600" },
+    { label: "Devoirs", count: allVisibleEvents.filter((event) => event.type === "Devoirs").length, dot: "bg-rose-500 text-rose-500" },
+    { label: "Projets", count: allVisibleEvents.filter((event) => event.type === "Projets").length, dot: "bg-blue-600 text-blue-600" },
+    { label: "Réunions", count: allVisibleEvents.filter((event) => event.type === "Réunions").length, dot: "bg-purple-600 text-purple-600" },
+    { label: "Rappels", count: allVisibleEvents.filter((event) => event.type === "Rappels").length, dot: "bg-orange-500 text-orange-500" },
+    { label: "Autres", count: allVisibleEvents.filter((event) => event.type === "Autres").length, dot: "bg-slate-400 text-slate-400" },
+  ];
 
   // Find current month cells dynamically
   const getCalendarCells = (date: Date) => {
@@ -874,23 +868,30 @@ export const CalendarsView: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-3.5">
-              {[
-                { title: "Réunion projet IA", date: "Aujourd'hui, 10:00", dot: "bg-purple-600" },
-                { title: "Sport - Cardio", date: "Aujourd'hui, 14:00", dot: "bg-emerald-500" },
-                { title: "Préparer la présentation", date: "Demain, 14:00", dot: "bg-blue-600" },
-                { title: "Voyage à Paris", date: "18 mai (Toute la journée)", dot: "bg-indigo-600" },
-                { title: "Anniversaire de Sarah", date: "25 mai (Toute la journée)", dot: "bg-orange-500" }
-              ].map((item, index) => (
-                <div key={index} className="flex items-start gap-2.5 py-0.5">
-                  <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${item.dot}`} />
-                  <div className="min-w-0">
-                    <h5 className="font-extrabold text-[11.5px] text-slate-800 leading-tight truncate">{item.title}</h5>
-                    <span className="text-[10px] text-slate-400 font-semibold block">{item.date}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {upcomingVisibleEvents.length === 0 ? (
+              <div className="rounded-2xl bg-slate-50 p-4 text-xs text-slate-500 text-center">
+                Ajoute un événement ou connecte Google Agenda pour voir tes prochaines échéances ici.
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {upcomingVisibleEvents.map((item, index) => {
+                  const dotClass = item.type === "Cours" ? "bg-indigo-600" :
+                    item.type === "Devoirs" ? "bg-rose-500" :
+                    item.type === "Projets" ? "bg-blue-600" :
+                    item.type === "Réunions" ? "bg-purple-600" :
+                    item.type === "Rappels" ? "bg-orange-500" : "bg-slate-400";
+                  return (
+                    <div key={item.id || index} className="flex items-start gap-2.5 py-0.5">
+                      <span className={`w-2 h-2 rounded-full shrink-0 mt-1.5 ${dotClass}`} />
+                      <div className="min-w-0">
+                        <h5 className="font-extrabold text-[11.5px] text-slate-800 leading-tight truncate">{item.title}</h5>
+                        <span className="text-[10px] text-slate-400 font-semibold block">{item.eventDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} • {item.time}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Widget C: Categories counters exactly matching requested rows */}
@@ -908,17 +909,10 @@ export const CalendarsView: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {[
-                { label: "Travail", count: 12, dot: "bg-purple-600 text-purple-600" },
-                { label: "Études", count: 9, dot: "bg-blue-600 text-blue-600" },
-                { label: "Sport", count: 6, dot: "bg-green-500 text-green-500" },
-                { label: "Personnel", count: 8, dot: "bg-yellow-500 text-yellow-500" },
-                { label: "Événements", count: 4, dot: "bg-rose-500 text-rose-500" },
-                { label: "Autre", count: 3, dot: "bg-slate-400 text-slate-400" },
-              ].map((cat, idx) => (
+              {categorySummary.map((cat, idx) => (
                 <div key={idx} className="flex items-center justify-between py-1 text-xs font-semibold hover:bg-slate-50/50 rounded-lg px-1 transition-all">
                   <div className="flex items-center gap-2.5">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${cat.dot.split(" ")[0]}`} />
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${cat.dot}`} />
                     <span className="text-slate-700 font-bold">{cat.label}</span>
                   </div>
                   <span className="text-[10px] font-black font-mono bg-slate-100 text-slate-500 py-0.5 px-2 rounded-md">

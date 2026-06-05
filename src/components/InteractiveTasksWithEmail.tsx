@@ -27,11 +27,6 @@ import {
 } from "lucide-react";
 import { useCollab } from "../context/CollabContext";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  subscribeTasks, 
-  saveTaskToCloud, 
-  removeTaskFromCloud 
-} from "../lib/firestoreSync";
 
 interface InteractiveTask {
   id: string;
@@ -57,7 +52,7 @@ interface ReminderItem {
 }
 
 export const InteractiveTasksWithEmail: React.FC = () => {
-  const { triggerNotification, currentUser, isAuthLoading } = useCollab();
+  const { triggerNotification } = useCollab();
   
   // Tasks state
   const [tasks, setTasks] = useState<InteractiveTask[]>([]);
@@ -88,41 +83,17 @@ export const InteractiveTasksWithEmail: React.FC = () => {
 
   // Load initial tasks list from Firestore or localStorage without seeding them
   useEffect(() => {
-    if (currentUser) {
-      const unsub = subscribeTasks(currentUser.uid, (cloudTasks) => {
-        if (cloudTasks.length > 0) {
-          const mapped: InteractiveTask[] = cloudTasks.map(t => ({
-            id: t.id,
-            title: t.title,
-            status: (t.status || "À faire") as InteractiveTask["status"],
-            priority: (t.priority || "Moyenne") as InteractiveTask["priority"],
-            dueDate: t.dueDate || "18 mai",
-            dueTime: t.dueTime || "09:00",
-            completed: t.completed,
-            starred: t.star || false,
-            email: t.email || "bagumakazamba@gmail.com",
-            remindActive: t.remindActive || false,
-            group: (t.group || "Aujourd'hui") as InteractiveTask["group"]
-          }));
-          setTasks(mapped);
-        } else {
-          setTasks([]);
-        }
-      });
-      return () => unsub();
-    } else if (!isAuthLoading) {
-      const saved = localStorage.getItem("awolf_styled_tasks");
-      if (saved) {
-        try {
-          setTasks(JSON.parse(saved));
-        } catch (e) {
-          setTasks([]);
-        }
-      } else {
+    const saved = localStorage.getItem("awolf_styled_tasks");
+    if (saved) {
+      try {
+        setTasks(JSON.parse(saved));
+      } catch (e) {
         setTasks([]);
       }
+    } else {
+      setTasks([]);
     }
-  }, [currentUser, isAuthLoading]);
+  }, []);
 
   const initializeSeedTasks = () => {
     const seedTasks: InteractiveTask[] = [
@@ -320,24 +291,6 @@ export const InteractiveTasksWithEmail: React.FC = () => {
   const saveTasks = (updated: InteractiveTask[]) => {
     setTasks(updated);
     localStorage.setItem("awolf_styled_tasks", JSON.stringify(updated));
-    if (currentUser) {
-      updated.forEach((task) => {
-        saveTaskToCloud(currentUser.uid, {
-          id: task.id,
-          title: task.title,
-          completed: task.completed,
-          priority: task.priority,
-          group: task.group || "Aujourd'hui",
-          star: task.starred || false,
-          subTasks: [],
-          status: task.status,
-          dueDate: task.dueDate,
-          dueTime: task.dueTime,
-          email: task.email,
-          remindActive: task.remindActive,
-        });
-      });
-    }
   };
 
   // Toggle task starred status
@@ -362,7 +315,7 @@ export const InteractiveTasksWithEmail: React.FC = () => {
     const updated = tasks.map(t => {
       if (t.id === id) {
         const nextCompleted = !t.completed;
-        const nextStatus = nextCompleted ? "Terminées" : "À faire";
+        const nextStatus: "Terminées" | "À faire" = nextCompleted ? "Terminées" : "À faire";
         triggerNotification(
           nextCompleted ? "Tâche validée ! 🎉" : "Tâche ré-ouverte ✏️",
           `Nouveau statut configuré pour : "${t.title}".`,
@@ -385,9 +338,6 @@ export const InteractiveTasksWithEmail: React.FC = () => {
     const taskToDelete = tasks.find(t => t.id === id);
     const updated = tasks.filter(t => t.id !== id);
     saveTasks(updated);
-    if (currentUser) {
-      removeTaskFromCloud(id);
-    }
     if (taskToDelete) {
       triggerNotification("Tâche supprimée", `La tâche "${taskToDelete.title}" a été retirée.`, "info");
     }

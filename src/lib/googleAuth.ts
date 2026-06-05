@@ -1,117 +1,89 @@
-import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  onAuthStateChanged, 
-  User, 
-  signOut 
-} from "firebase/auth";
-import firebaseConfig from "../../firebase-applet-config.json";
+// Minimal local-friendly Google auth shim.
+// This removes the Firebase dependency and offers a small UX for desktop apps
+// to store an access token locally. For full OAuth flows, replace with a
+// proper OAuth redirect/popup implementation suited for Electron.
 
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+const GOOGLE_ACCESS_TOKEN_KEY = "google_auth_access_token";
 
-// Use GoogleAuthProvider and configure appropriate scopes
-export const provider = new GoogleAuthProvider();
-provider.addScope("https://www.googleapis.com/auth/calendar.readonly");
-provider.addScope("https://www.googleapis.com/auth/calendar.events");
+type LocalUser = { displayName?: string; email?: string; uid?: string };
 
-// Internal variables for caching authentication states
 let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+let cachedAccessToken: string | null = localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
+  onAuthSuccess?: (user: LocalUser, token: string) => void,
   onAuthFailure?: () => void
 ) => {
-  // Check if we have a simulated production session saved
-  const savedSimUser = localStorage.getItem("google_auth_sim_user");
-  const savedSimToken = localStorage.getItem("google_auth_sim_token");
-  if (savedSimUser && savedSimToken) {
-    try {
-      const parsedUser = JSON.parse(savedSimUser);
-      cachedAccessToken = savedSimToken;
-      setTimeout(() => {
-        if (onAuthSuccess) onAuthSuccess(parsedUser, savedSimToken);
-      }, 50);
-      return () => {}; // Simulated unsubscribe
-    } catch (e) {
-      console.error("Error restoring simulated session", e);
-    }
+  // Immediately notify based on locally cached token
+  const restoredToken = cachedAccessToken || localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
+  if (restoredToken) {
+    const userJson = localStorage.getItem("google_auth_sim_user");
+    const user: LocalUser = userJson ? JSON.parse(userJson) : { displayName: "Google User", email: "user@local" };
+    if (onAuthSuccess) onAuthSuccess(user, restoredToken);
+  } else {
+    if (onAuthFailure) onAuthFailure();
   }
 
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
-    } else {
-      cachedAccessToken = null;
-      if (onAuthFailure) onAuthFailure();
-    }
-  });
+  // Return an unsubscribe/noop to match previous API
+  return () => {};
 };
 
 export const isRunningInIframe = (): boolean => {
   try {
     return window.self !== window.top;
   } catch (e) {
-    return true; // Si l'accès cross-origin à window.top est bloqué, on est dans une iframe
+    return true;
   }
 };
 
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: string } | null> => {
   if (isSigningIn) {
     console.warn("Sign-in already in progress. Ignoring duplicate request.");
     return null;
   }
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error("Impossible de récupérer le token d'accès Google Agenda.");
+    // If running inside Electron with the new preload API, use the main
+    // process to perform the PKCE loopback OAuth flow and return tokens.
+    if ((window as any).electronAPI && (window as any).electronAPI.startGoogleOAuth) {
+      try {
+        const tokenResp = await (window as any).electronAPI.startGoogleOAuth();
+        if (!tokenResp || !tokenResp.access_token) throw new Error("No access token returned from Electron OAuth");
+        cachedAccessToken = tokenResp.access_token;
+        localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
+        const user: LocalUser = { displayName: "Google User", email: "user@local" };
+        localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
+        return { user, accessToken: cachedAccessToken };
+      } catch (err) {
+        console.error("Electron OAuth failed:", err);
+        throw err;
+      }
     }
-    cachedAccessToken = credential.accessToken;
-    // Clear any previous simulated storage to use real one
-    localStorage.removeItem("google_auth_sim_user");
-    localStorage.removeItem("google_auth_sim_token");
-    return { user: result.user, accessToken: cachedAccessToken };
+
+    // Fallback: prompt user to paste an OAuth access token.
+    const token = window.prompt("Please paste your Google OAuth access token (or Cancel to abort):");
+    if (!token) return null;
+    cachedAccessToken = token;
+    localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
+    const user: LocalUser = { displayName: "Google User", email: "user@local" };
+    localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
+    return { user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error("Erreur de connexion Google Auth originale. Activation automatique de la simulation de Production:", error);
-    
-    // Auto-fallback with high-fidelity simulated session
-    const mockUser = {
-      uid: "simulated_prod_user_id",
-      email: "bagumakazamba@gmail.com",
-      displayName: "Baguma Kazamba",
-      photoURL: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop",
-      emailVerified: true
-    } as unknown as User;
-    
-    cachedAccessToken = "simulated_prod_access_token";
-    localStorage.setItem("google_auth_sim_user", JSON.stringify(mockUser));
-    localStorage.setItem("google_auth_sim_token", cachedAccessToken);
-    
-    return { user: mockUser, accessToken: cachedAccessToken };
+    console.error("Google Auth sign-in failed:", error);
+    throw error;
   } finally {
     isSigningIn = false;
   }
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  const savedSimToken = localStorage.getItem("google_auth_sim_token");
-  return cachedAccessToken || savedSimToken;
+  return cachedAccessToken || localStorage.getItem(GOOGLE_ACCESS_TOKEN_KEY);
 };
 
 export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
+  localStorage.removeItem(GOOGLE_ACCESS_TOKEN_KEY);
   localStorage.removeItem("google_auth_sim_user");
   localStorage.removeItem("google_auth_sim_token");
 };
@@ -247,20 +219,27 @@ function getDynamicMockEvents(): GoogleCalendarEvent[] {
  */
 export async function fetchGoogleCalendarEvents(accessToken: string): Promise<GoogleCalendarEvent[]> {
   try {
-    const response = await fetch(`/api/calendar/sync`, {
+    const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
+    url.searchParams.set("singleEvents", "true");
+    url.searchParams.set("orderBy", "startTime");
+    url.searchParams.set("maxResults", "50");
+    url.searchParams.set("timeMin", new Date().toISOString());
+
+    const response = await fetch(url.toString(), {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },
     });
-    
+
     if (!response.ok) {
-      throw new Error(`API Http Error: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`Google Calendar API Error: ${response.status} - ${errorText}`);
     }
-    
-    return await response.json();
+
+    const json = await response.json();
+    return json.items || [];
   } catch (err) {
-    console.error("Error grabbing Google Calendar data from backend server:", err);
-    // If anything fails, return active week mock data gracefully
+    console.error("Error fetching Google Calendar data directly:", err);
     return getDynamicMockEvents();
   }
 }
@@ -311,7 +290,7 @@ export async function writeGoogleCalendarEvent(
   endTimeIso: string,
   location?: string
 ): Promise<any> {
-  const response = await fetch("/api/calendar/add", {
+  const response = await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

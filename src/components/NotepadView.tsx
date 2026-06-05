@@ -32,11 +32,6 @@ import {
 } from "lucide-react";
 import { useCollab } from "../context/CollabContext";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  subscribeNotes, 
-  saveNoteToCloud, 
-  removeNoteFromCloud 
-} from "../lib/firestoreSync";
 
 interface ChecklistItem {
   id: string;
@@ -68,7 +63,7 @@ interface Note {
 }
 
 export const NotepadView: React.FC = () => {
-  const { triggerNotification, currentUser, isAuthLoading } = useCollab();
+  const { triggerNotification } = useCollab();
   const [notes, setNotes] = useState<Note[]>([]);
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -247,84 +242,30 @@ const toPascalCase = (str: string): string => {
       }
     ];
 
-    if (currentUser) {
-      const unsub = subscribeNotes(currentUser.uid, (cloud) => {
-        if (cloud.length > 0) {
-          const mapped: Note[] = cloud.map(n => ({
-            id: n.id,
-            title: n.title,
-            category: n.category || "Général",
-            pinned: n.pinned || false,
-            isFavorite: n.isFavorite || false,
-            tags: n.tags || [],
-            createdAt: n.createdAt || new Date().toISOString(),
-            updatedAt: n.updatedAt || new Date().toISOString(),
-            relativeTimeCreated: n.relativeTimeCreated || "Créée récemment",
-            relativeTimeUpdated: n.relativeTimeUpdated || "Modifiée récemment",
-            isStructured: n.isStructured || false,
-            problemText: n.problemText,
-            quoteBox: n.quoteBox,
-            solutionIntro: n.solutionIntro,
-            solutionBullets: n.solutionBullets,
-            features: n.features,
-            nextSteps: n.nextSteps,
-            content: n.content || ""
-          }));
-          setNotes(mapped);
-          
-          if (selectedNote) {
-            const active = mapped.find(note => note.id === selectedNote.id);
-            if (active) {
-              setSelectedNote(active);
-            }
-          } else if (mapped.length > 0) {
-            const startupNote = mapped.find((n: Note) => n.title.includes("startup")) || mapped[0];
-            setSelectedNote(startupNote);
-          }
-        } else {
-          // Empty state for logged in user -> don't seed defaults
-          setNotes([]);
-          setSelectedNote(null);
+    const saved = localStorage.getItem("awolf_notepad_notes_v2");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setNotes(parsed);
+        if (parsed.length > 0) {
+          const startupNote = parsed.find((n: Note) => n.title.includes("startup")) || parsed[0];
+          setSelectedNote(startupNote);
         }
-      });
-      return () => unsub();
-    } else if (!isAuthLoading) {
-      const saved = localStorage.getItem("awolf_notepad_notes_v2");
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          setNotes(parsed);
-          if (parsed.length > 0) {
-            const startupNote = parsed.find((n: Note) => n.title.includes("startup")) || parsed[0];
-            setSelectedNote(startupNote);
-          }
-        } catch (e) {
-          setNotes([]);
-        }
-      } else {
+      } catch (e) {
         setNotes([]);
         setSelectedNote(null);
-        localStorage.setItem("awolf_notepad_notes_v2", JSON.stringify([]));
       }
+    } else {
+      setNotes([]);
+      setSelectedNote(null);
+      localStorage.setItem("awolf_notepad_notes_v2", JSON.stringify([]));
     }
-  }, [currentUser, isAuthLoading]);
+  }, []);
 
   const saveNotesAndSync = (updatedNotes: Note[]) => {
     setNotes(updatedNotes);
     localStorage.setItem("awolf_notepad_notes_v2", JSON.stringify(updatedNotes));
-    
-    if (currentUser) {
-      updatedNotes.forEach((note) => {
-        saveNoteToCloud(currentUser.uid, {
-          ...note,
-          id: note.id,
-          title: note.title,
-          content: note.content
-        });
-      });
-    }
 
-    // Maintain active selection
     if (selectedNote) {
       const active = updatedNotes.find(n => n.id === selectedNote.id);
       if (active) {
@@ -459,12 +400,7 @@ const toPascalCase = (str: string): string => {
     if (confirm(`Voulez-vous vraiment supprimer "${title}" ? Les données seront perdues.`)) {
       const remaining = notes.filter(n => n.id !== noteId);
       saveNotesAndSync(remaining);
-      if (currentUser) {
-        removeNoteFromCloud(noteId);
-      }
-      triggerNotification("Note supprimée 🗑️", `"${title}" a été supprimée du bloc-notes.`, "info");
-    }
-  };
+
 
   // Filter strategy matches both category selection, tags selection, and typed search
   const filteredNotes = notes.filter(note => {

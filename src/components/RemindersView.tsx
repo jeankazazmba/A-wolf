@@ -16,11 +16,6 @@ import {
 } from "lucide-react";
 import { useCollab } from "../context/CollabContext";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  subscribeReminders,
-  saveReminderToCloud,
-  removeReminderFromCloud
-} from "../lib/firestoreSync";
 
 interface ReminderItem {
   id: string;
@@ -54,7 +49,7 @@ const defaultReminders: ReminderItem[] = [
 ];
 
 export const RemindersView: React.FC = () => {
-  const { triggerNotification, currentUser, isAuthLoading } = useCollab();
+  const { triggerNotification } = useCollab();
 
   // Active sub-tab inside Rappels
   const [activeTab, setActiveTab] = useState<"À venir" | "Terminés" | "Tout">("À venir");
@@ -71,33 +66,19 @@ export const RemindersView: React.FC = () => {
   // State carrying reminder items
   const [reminders, setReminders] = useState<ReminderItem[]>([]);
 
-  // Real-time listener on Firestore Reminders
+  // Load reminders from local storage
   useEffect(() => {
-    if (currentUser) {
-      const unsub = subscribeReminders(currentUser.uid, (cloud) => {
-        if (cloud.length > 0) {
-          const mapped: ReminderItem[] = cloud.map(r => ({
-            id: r.id,
-            title: r.title,
-            time: r.time || "12:00",
-            dateGroup: (r.dateGroup || "Aujourd'hui") as any,
-            dateText: r.dateText || "14 Mai 2024",
-            subtitle: r.subtitle || "",
-            category: (r.category || "Cours") as any,
-            importance: (r.importance || "medium") as any,
-            completed: r.completed,
-            colorBg: r.colorBg || "bg-blue-600"
-          }));
-          setReminders(mapped);
-        } else {
-          setReminders([]);
-        }
-      });
-      return () => unsub();
-    } else if (!isAuthLoading) {
-      setReminders([]);
+    const saved = localStorage.getItem("awolf_reminders_backup");
+    if (saved) {
+      try {
+        setReminders(JSON.parse(saved));
+      } catch {
+        setReminders(defaultReminders);
+      }
+    } else {
+      setReminders(defaultReminders);
     }
-  }, [currentUser, isAuthLoading]);
+  }, []);
 
   // Settings mock states
   const [defaultReminderTime, setDefaultReminderTime] = useState("15 minutes avant");
@@ -137,23 +118,9 @@ export const RemindersView: React.FC = () => {
       colorBg: targetBg,
     };
 
-    setReminders([custom, ...reminders]);
-    if (currentUser) {
-      saveReminderToCloud(currentUser.uid, {
-        id: custom.id,
-        title: custom.title,
-        deadline: custom.time,
-        completed: custom.completed,
-        active: !custom.completed,
-        time: custom.time,
-        dateGroup: custom.dateGroup,
-        dateText: custom.dateText,
-        subtitle: custom.subtitle,
-        category: custom.category,
-        importance: custom.importance,
-        colorBg: custom.colorBg
-      });
-    }
+    const updated = [custom, ...reminders];
+    setReminders(updated);
+    localStorage.setItem("awolf_reminders_backup", JSON.stringify(updated));
     setIsOpenAddModal(false);
     setNewTitle("");
     setNewSubtitle("");
@@ -168,15 +135,9 @@ export const RemindersView: React.FC = () => {
     const item = reminders.find(r => r.id === id);
     if (item) {
       const nextCompleted = !item.completed;
-      setReminders(prev => prev.map(item => item.id === id ? { ...item, completed: nextCompleted } : item));
-      if (currentUser) {
-        saveReminderToCloud(currentUser.uid, {
-          ...item,
-          deadline: item.time,
-          completed: nextCompleted,
-          active: !nextCompleted
-        });
-      }
+      const updated = reminders.map((item) => item.id === id ? { ...item, completed: nextCompleted } : item);
+      setReminders(updated);
+      localStorage.setItem("awolf_reminders_backup", JSON.stringify(updated));
     }
     triggerNotification(
       currentStatus ? "Sélection rétablie" : "Rappel Terminé ✅",
@@ -186,10 +147,9 @@ export const RemindersView: React.FC = () => {
   };
 
   const handleDeleteReminder = (id: string) => {
-    setReminders(prev => prev.filter(item => item.id !== id));
-    if (currentUser) {
-      removeReminderFromCloud(id);
-    }
+    const updated = reminders.filter(item => item.id !== id);
+    setReminders(updated);
+    localStorage.setItem("awolf_reminders_backup", JSON.stringify(updated));
     triggerNotification("Suppression effectuée", "Rappel supprimé.", "warning");
   };
 
