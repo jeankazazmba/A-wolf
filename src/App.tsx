@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Plus, 
   MapPin, 
@@ -30,6 +30,9 @@ import {
 import { CollabProvider, useCollab } from "./context/CollabContext";
 import { NavigationSidebar } from "./components/NavigationSidebar";
 import { Navbar } from "./components/Navbar";
+import { SplashScreen } from "./components/SplashScreen";
+import { LoginPage } from "./components/LoginPage";
+import { TermsAndPrivacyModal } from "./components/TermsAndPrivacyModal";
 import brandLogo from "./assets/logo.png";
 import { ScheduleView } from "./components/ScheduleView";
 import { FocusZone } from "./components/FocusZone";
@@ -562,64 +565,113 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
   );
 }
 
-export default function App() {
+function AppContent() {
   const [currentTab, setTab] = useState("accueil");
   const [searchQuery, setSearchQuery] = useState("");
+  
+  return (
+    <MainDashboardContent 
+      currentTab={currentTab} 
+      setTab={setTab} 
+      searchQuery={searchQuery} 
+      setSearchQuery={setSearchQuery} 
+    />
+  );
+}
+
+function AuthLayout() {
   const [showSplash, setShowSplash] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 1800);
-    return () => clearTimeout(timer);
-  }, []);
+  const { currentUser, isAuthLoading, loginWithGoogle } = useCollab();
 
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+  };
+
+  const handleAcceptTerms = () => {
+    setTermsAccepted(true);
+  };
+
+  const handleAcceptPrivacy = () => {
+    setPrivacyAccepted(true);
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (error) {
+      console.error("Sign-in error:", error);
+    }
+  };
+
+  // Show splash screen first
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
+  // Show loading if auth is loading
+  if (isAuthLoading) {
+    return (
+      <motion.div className="fixed inset-0 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-100 flex items-center justify-center">
+        <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+          <img src={brandLogo} alt="Loading" className="w-32 h-32" />
+        </motion.div>
+      </motion.div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!currentUser) {
+    return (
+      <>
+        <LoginPage
+          onGoogleSignIn={handleGoogleSignIn}
+          onTermsAccepted={handleAcceptTerms}
+          onPrivacyAccepted={handleAcceptPrivacy}
+          onShowTerms={() => setShowTermsModal(true)}
+          onShowPrivacy={() => setShowPrivacyModal(true)}
+          termsAccepted={termsAccepted}
+          privacyAccepted={privacyAccepted}
+          isLoading={isAuthLoading}
+        />
+        
+        <TermsAndPrivacyModal
+          isOpen={showTermsModal}
+          type="terms"
+          onClose={() => setShowTermsModal(false)}
+          onAccept={() => {
+            handleAcceptTerms();
+            setShowTermsModal(false);
+          }}
+          isAccepted={termsAccepted}
+        />
+        
+        <TermsAndPrivacyModal
+          isOpen={showPrivacyModal}
+          type="privacy"
+          onClose={() => setShowPrivacyModal(false)}
+          onAccept={() => {
+            handleAcceptPrivacy();
+            setShowPrivacyModal(false);
+          }}
+          isAccepted={privacyAccepted}
+        />
+      </>
+    );
+  }
+
+  // User is authenticated, show main app
+  return <AppContent />;
+}
+
+export default function App() {
   return (
     <CollabProvider>
-      <AnimatePresence>
-        {showSplash && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeInOut" } }}
-            className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999] select-none"
-            id="app-splash-screen"
-          >
-            <motion.div
-              initial={{ scale: 0.88, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
-              className="flex flex-col items-center gap-6"
-            >
-              {/* Larger centered logo with no shadows or borders */}
-              <div className="w-48 h-48 md:w-64 md:h-64 flex items-center justify-center bg-white">
-                <img 
-                  src={brandLogo} 
-                  alt="A-Wolf Logo" 
-                  className="w-full h-full object-contain" 
-                  referrerPolicy="no-referrer" 
-                />
-              </div>
-              
-              {/* Sleek loading line indicator */}
-              <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden mt-2 relative">
-                <motion.div 
-                  className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-purple-600 to-indigo-600"
-                  initial={{ width: "0%" }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <MainDashboardContent 
-        currentTab={currentTab} 
-        setTab={setTab} 
-        searchQuery={searchQuery} 
-        setSearchQuery={setSearchQuery} 
-      />
+      <AuthLayout />
     </CollabProvider>
   );
 }

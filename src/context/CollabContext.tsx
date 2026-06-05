@@ -17,8 +17,8 @@ interface CollabContextType {
   triggerNotification: (title: string, content: string, type: "info" | "success" | "warning") => void;
   markNotificationsRead: () => void;
   clearNotifications: () => void;
-  // Firebase Auth additions
-  currentUser: User | null;
+  // Auth additions
+  currentUser: any | null;
   isAuthLoading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;

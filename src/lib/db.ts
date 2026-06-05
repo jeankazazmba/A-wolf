@@ -309,15 +309,3 @@ export async function clearNotifications(): Promise<void> {
   await pool.query(`DELETE FROM notifications`);
 }
 
-if (import.meta.url.endsWith("db.ts")) {
-  // When executed directly: create database schema.
-  initializeDatabase()
-    .then(() => {
-      console.log("PostgreSQL schema initialized successfully.");
-      process.exit(0);
-    })
-    .catch((err) => {
-      console.error("Unable to initialize database:", err);
-      process.exit(1);
-    });
-}

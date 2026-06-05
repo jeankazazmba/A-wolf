@@ -400,7 +400,9 @@ const toPascalCase = (str: string): string => {
     if (confirm(`Voulez-vous vraiment supprimer "${title}" ? Les données seront perdues.`)) {
       const remaining = notes.filter(n => n.id !== noteId);
       saveNotesAndSync(remaining);
-
+      triggerNotification("Note supprimée", `La note "${title}" a été supprimée.`, "info");
+    }
+  };
 
   // Filter strategy matches both category selection, tags selection, and typed search
   const filteredNotes = notes.filter(note => {
