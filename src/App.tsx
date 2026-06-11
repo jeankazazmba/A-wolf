@@ -66,18 +66,6 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
     loginWithGoogle
   } = useCollab();
 
-  if (isAuthLoading) {
-    return (
-      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999]" id="auth-loading-screen">
-        <div className="w-16 h-16 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <LoginView loginWithGoogle={loginWithGoogle} />;
-  }
-
   // --- Home Dashboard Split Screen Layout ---
   // If tab is "accueil", we render the exact dashboard from the user image!
   
@@ -113,6 +101,18 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
       if (focusInterval) clearInterval(focusInterval);
     };
   }, [rightFocusActive, triggerNotification]);
+
+  if (isAuthLoading) {
+    return (
+      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999]" id="auth-loading-screen">
+        <div className="w-16 h-16 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginView loginWithGoogle={loginWithGoogle} />;
+  }
 
   const handleCreateRightTask = (e: React.FormEvent) => {
     e.preventDefault();
