@@ -64,8 +64,8 @@ export const CalendarsView: React.FC = () => {
     Autres: true,
   });
 
-  // Dynamic Date tracking (Starts on May 15, 2026)
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 4, 15));
+  // Dynamic Date tracking (Starts on today's date)
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
 
   // Google Calendar Integration states
   const [user, setUser] = useState<any>(null);
@@ -382,7 +382,7 @@ export const CalendarsView: React.FC = () => {
         if (!e.title.toLowerCase().includes(query)) return false;
       }
       
-      const eventDate = e.dateStr ? new Date(e.dateStr) : new Date(2026, 4, e.day || 15);
+      const eventDate = e.dateStr ? new Date(e.dateStr) : new Date(new Date().getFullYear(), new Date().getMonth(), e.day || new Date().getDate());
       const isSameDay = 
         eventDate.getDate() === cellDate.getDate() &&
         eventDate.getMonth() === cellDate.getMonth() &&
@@ -451,8 +451,8 @@ export const CalendarsView: React.FC = () => {
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <button 
             onClick={() => {
-              setCurrentDate(new Date(2026, 4, 15));
-              triggerNotification("Retour", "Date repositionnée au focus (15 Mai 2026)", "info");
+              setCurrentDate(new Date());
+              triggerNotification("Retour", "Date repositionnée à aujourd'hui", "info");
             }}
             className="px-4 py-2 bg-slate-50 border border-slate-205/65 text-slate-700 hover:text-slate-900 font-extrabold text-xs rounded-xl cursor-pointer transition-all active:scale-95 shadow-3xs"
           >
@@ -537,7 +537,11 @@ export const CalendarsView: React.FC = () => {
               <div className="grid grid-cols-7 gap-1 pt-2 min-h-[500px]" id="monthly-days-grid">
                 {calendarCells.map((cell, index) => {
                   const cellEvents = getEventsForDay(cell.date);
-                  const isToday = cell.currentMonth && cell.date.getDate() === 15 && cell.date.getMonth() === 4 && cell.date.getFullYear() === 2026;
+                  const today = new Date();
+                  const isToday = cell.currentMonth && 
+                                  cell.date.getDate() === today.getDate() && 
+                                  cell.date.getMonth() === today.getMonth() && 
+                                  cell.date.getFullYear() === today.getFullYear();
                   const isSelected = cell.currentMonth && cell.date.getDate() === currentDate.getDate() && cell.date.getMonth() === currentDate.getMonth() && cell.date.getFullYear() === currentDate.getFullYear();
 
                   return (
@@ -611,7 +615,10 @@ export const CalendarsView: React.FC = () => {
 
                   return daysList.map((wd, i) => {
                     const dayName = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][wd.getDay()];
-                    const isToday = wd.getDate() === 15 && wd.getMonth() === 4 && wd.getFullYear() === 2026;
+                    const today = new Date();
+                    const isToday = wd.getDate() === today.getDate() && 
+                                    wd.getMonth() === today.getMonth() && 
+                                    wd.getFullYear() === today.getFullYear();
                     const isSelected = wd.getDate() === currentDate.getDate() && wd.getMonth() === currentDate.getMonth() && wd.getFullYear() === currentDate.getFullYear();
                     return (
                       <div key={i} className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => setCurrentDate(wd)}>
@@ -741,13 +748,13 @@ export const CalendarsView: React.FC = () => {
                     }
                     return showGoogleInGrid;
                   }).sort((a, b) => {
-                    const dateA = a.dateStr ? new Date(a.dateStr) : new Date(2026, 4, a.day || 15);
-                    const dateB = b.dateStr ? new Date(b.dateStr) : new Date(2026, 4, b.day || 15);
+                    const dateA = a.dateStr ? new Date(a.dateStr) : new Date(new Date().getFullYear(), new Date().getMonth(), a.day || new Date().getDate());
+                    const dateB = b.dateStr ? new Date(b.dateStr) : new Date(new Date().getFullYear(), new Date().getMonth(), b.day || new Date().getDate());
                     return dateA.getTime() - dateB.getTime() || a.time.localeCompare(b.time);
                   });
 
                   return agendaEvents.map(ev => {
-                    const evDate = ev.dateStr ? new Date(ev.dateStr) : new Date(2026, 4, ev.day || 15);
+                    const evDate = ev.dateStr ? new Date(ev.dateStr) : new Date(new Date().getFullYear(), new Date().getMonth(), ev.day || new Date().getDate());
                     return (
                       <div key={ev.id} className={`p-4 rounded-xl border flex flex-col md:flex-row justify-between md:items-center gap-4 transition-all hover:translate-x-1 ${ev.color}`}>
                         <div className="min-w-0">
@@ -831,7 +838,11 @@ export const CalendarsView: React.FC = () => {
             <div className="grid grid-cols-7 text-center text-[10px] font-bold gap-y-2 mt-2 bg-slate-50/50 p-2.5 rounded-xl">
               {calendarCells.map((cell, idx) => {
                 const isSelected = cell.currentMonth && cell.date.getDate() === currentDate.getDate() && cell.date.getMonth() === currentDate.getMonth() && cell.date.getFullYear() === currentDate.getFullYear();
-                const isTodayReal = cell.currentMonth && cell.date.getDate() === 15 && cell.date.getMonth() === 4 && cell.date.getFullYear() === 2026;
+                const today = new Date();
+                const isTodayReal = cell.currentMonth && 
+                                    cell.date.getDate() === today.getDate() && 
+                                    cell.date.getMonth() === today.getMonth() && 
+                                    cell.date.getFullYear() === today.getFullYear();
 
                 return (
                   <span

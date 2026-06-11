@@ -39,6 +39,7 @@ import { TaskCenter } from "./components/TaskCenter";
 import { CalendarsView } from "./components/CalendarsView";
 import { RemindersView } from "./components/RemindersView";
 import { AccueilDashboard } from "./components/AccueilDashboard";
+import { LoginView } from "./components/LoginView";
 import { Task, Course, Resource, AppNotification } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -59,8 +60,23 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
     toggleTask, 
     triggerNotification, 
     deleteResource,
-    clearNotifications 
+    clearNotifications,
+    currentUser,
+    isAuthLoading,
+    loginWithGoogle
   } = useCollab();
+
+  if (isAuthLoading) {
+    return (
+      <div className="fixed inset-0 bg-white flex flex-col items-center justify-center z-[9999]" id="auth-loading-screen">
+        <div className="w-16 h-16 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return <LoginView loginWithGoogle={loginWithGoogle} />;
+  }
 
   // --- Home Dashboard Split Screen Layout ---
   // If tab is "accueil", we render the exact dashboard from the user image!

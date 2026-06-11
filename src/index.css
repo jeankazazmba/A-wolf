@@ -37,3 +37,24 @@
   background-color: #a78bfa !important; /* violet-400 */
 }
 
+/* Custom CSS Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-shake {
+  animation: shake 0.35s ease-in-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+

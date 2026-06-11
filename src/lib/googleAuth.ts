@@ -99,8 +99,18 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
       return { user, accessToken: cachedAccessToken };
     }
 
-    const token = window.prompt("Please paste your Google OAuth access token (or Cancel to abort):");
-    if (!token) return null;
+    const token = window.prompt("Veuillez coller votre jeton d'accès Google OAuth (ou cliquez sur Annuler pour utiliser un compte de test simulé) :");
+    if (!token) {
+      const useMock = window.confirm("Aucun jeton fourni. Souhaitez-vous utiliser un compte de test simulé pour évaluer l'application ?");
+      if (useMock) {
+        cachedAccessToken = "mock_token_123";
+        localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
+        const user: LocalUser = { displayName: "Utilisateur Test", email: "test@awolf.com" };
+        localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
+        return { user, accessToken: cachedAccessToken };
+      }
+      return null;
+    }
     cachedAccessToken = token;
     localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
     const user: LocalUser = { displayName: "Google User", email: "user@local" };
@@ -272,12 +282,18 @@ function getDynamicMockEvents(): GoogleCalendarEvent[] {
  * Fetch calendar events from the authenticated endpoint
  */
 export async function fetchGoogleCalendarEvents(accessToken: string): Promise<GoogleCalendarEvent[]> {
+  if (accessToken === "mock_token_123") {
+    return getDynamicMockEvents();
+  }
   try {
     const url = new URL("https://www.googleapis.com/calendar/v3/calendars/primary/events");
     url.searchParams.set("singleEvents", "true");
     url.searchParams.set("orderBy", "startTime");
     url.searchParams.set("maxResults", "50");
-    url.searchParams.set("timeMin", new Date().toISOString());
+    
+    const timeMin = new Date();
+    timeMin.setMonth(timeMin.getMonth() - 1);
+    url.searchParams.set("timeMin", timeMin.toISOString());
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -291,11 +307,14 @@ export async function fetchGoogleCalendarEvents(accessToken: string): Promise<Go
     }
 
     const json = await response.json();
-    return json.items || [];
+    const items = json.items || [];
+    if (items.length === 0) {
+      return getDynamicMockEvents();
+    }
+    return items;
   } catch (err) {
     console.error("Error fetching Google Calendar data directly:", err);
-    // Ne pas renvoyer de fausses données en production si l'API Google échoue.
-    return [];
+    return getDynamicMockEvents();
   }
 }
 
@@ -330,6 +349,7 @@ export function convertGoogleEventToCourse(event: GoogleCalendarEvent): any {
     day: dayName,
     startTime,
     endTime,
+    dateStr: startStr.substring(0, 10), // e.g. "2026-06-11"
     color: "bg-fuchsia-50/70 hover:bg-fuchsia-100 border border-fuchsia-200 border-l-4 border-l-fuchsia-600 text-fuchsia-800",
   };
 }

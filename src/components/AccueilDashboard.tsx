@@ -45,6 +45,32 @@ export const AccueilDashboard: React.FC<AccueilDashboardProps> = ({
   // Option to auto-hide past or outdated courses to only show actions ahead
   const [hidePastCourses, setHidePastCourses] = React.useState(true);
 
+  const miniCalendarData = React.useMemo(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-indexed
+    
+    const monthLabel = today.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const capitalizedMonthLabel = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+    
+    // First day of the month
+    const firstDay = new Date(year, month, 1);
+    const dayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const paddingCount = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Adjust so Monday is first
+    
+    // Number of days in the month
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    return {
+      capitalizedMonthLabel,
+      paddingCount,
+      daysInMonth,
+      todayDate: today.getDate(),
+      todayMonth: month,
+      todayYear: year
+    };
+  }, []);
+
   // Filter courses based on local time and days of week
   const filteredCourses = React.useMemo(() => {
     const rawCourses = state.courses || [];
@@ -526,7 +552,7 @@ export const AccueilDashboard: React.FC<AccueilDashboardProps> = ({
             <div className="flex justify-between items-center mb-1">
               <h4 className="font-bold text-slate-800 text-sm font-display">Agenda</h4>
             </div>
-            <p className="text-[10px] text-slate-400 mb-3.5">Calendrier mensuel actif • Mai 2026</p>
+            <p className="text-[10px] text-slate-400 mb-3.5">Calendrier mensuel actif • {miniCalendarData.capitalizedMonthLabel}</p>
 
             {/* Mini Month Grid Calendar */}
             <div className="p-2 border border-slate-100 rounded-2xl bg-slate-50/50">
@@ -536,18 +562,18 @@ export const AccueilDashboard: React.FC<AccueilDashboardProps> = ({
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1 text-center">
-                {/* 4 Empty Days padding for May 2026 starting on Friday */}
-                {Array(4).fill(null).map((_, idx) => (
+                {/* Empty Days padding starting on Monday */}
+                {Array(miniCalendarData.paddingCount).fill(null).map((_, idx) => (
                   <div key={`empty-${idx}`} className="h-6 w-full" />
                 ))}
-                {/* 31 days in May */}
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => {
-                  const isToday = day === 28;
+                {/* Days in current month */}
+                {Array.from({ length: miniCalendarData.daysInMonth }, (_, i) => i + 1).map((day) => {
+                  const isToday = day === miniCalendarData.todayDate;
                   const isEventDay = [3, 10, 15, 22].includes(day);
                   return (
                     <div 
                       key={`day-${day}`}
-                      onClick={() => triggerNotification(`Jour ${day} Mai`, `Aucun examen d'études prévu ce jour. Reste concentré !`, "info")}
+                      onClick={() => triggerNotification(`Jour ${day} ${miniCalendarData.capitalizedMonthLabel}`, `Aucun examen d'études prévu ce jour. Reste concentré !`, "info")}
                       className={`h-6 w-full text-[10px] font-bold flex flex-col items-center justify-center rounded-lg relative cursor-pointer transition-all ${
                         isToday 
                           ? "bg-gradient-to-tr from-purple-600 to-indigo-600 text-white shadow-sm font-black" 

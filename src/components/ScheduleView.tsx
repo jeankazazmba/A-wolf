@@ -247,7 +247,7 @@ export const ScheduleView: React.FC = () => {
   const [newDescription, setNewDescription] = useState("");
 
   // Dynamic Date & Calendar States & Logic
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date(2026, 4, 15)); // Start at May 15, 2026 or similar reference as highlighted in the calendar mockup
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [nowTime, setNowTime] = useState(() => new Date());
 
   useEffect(() => {
@@ -569,6 +569,14 @@ export const ScheduleView: React.FC = () => {
       return false;
     }
 
+    if (course.id.startsWith("gcal_")) {
+      const dateStr = (course as any).dateStr;
+      if (dateStr) {
+        const hasDateInWeek = activeWeekDays.some(wd => formatDateToISO(wd.date) === dateStr);
+        if (!hasDateInWeek) return false;
+      }
+    }
+
     return true;
   });
 
@@ -777,10 +785,11 @@ export const ScheduleView: React.FC = () => {
           </div>
           
           {visibleDays.map((vd) => {
+            const today = new Date();
             const isTodayHighlight =
-              vd.date.getDate() === 28 &&
-              vd.date.getMonth() === 4 &&
-              vd.date.getFullYear() === 2026;
+              vd.date.getDate() === today.getDate() &&
+              vd.date.getMonth() === today.getMonth() &&
+              vd.date.getFullYear() === today.getFullYear();
 
             const isSelected =
               vd.date.getDate() === currentDate.getDate() &&
@@ -1012,7 +1021,8 @@ export const ScheduleView: React.FC = () => {
                              dateObj.getMonth() === currentDate.getMonth() && 
                              dateObj.getFullYear() === currentDate.getFullYear();
             
-            const isTodayInRealLife = dateObj.getDate() === 28 && dateObj.getMonth() === 4 && dateObj.getFullYear() === 2026;
+            const today = new Date();
+            const isTodayInRealLife = dateObj.getDate() === today.getDate() && dateObj.getMonth() === today.getMonth() && dateObj.getFullYear() === today.getFullYear();
             
             return (
               <button
@@ -1583,7 +1593,7 @@ export const ScheduleView: React.FC = () => {
                 type="button"
                 className="px-3 py-1 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900 border border-slate-200/50 text-[10px] font-bold font-mono tracking-wider uppercase rounded-lg transition-all"
                 onClick={() => {
-                  setCurrentDate(new Date(2026, 4, 28)); // May 28, 2026
+                  setCurrentDate(new Date());
                   triggerNotification("Navigation", "Retour à aujourd'hui", "info");
                 }}
               >
@@ -1668,10 +1678,11 @@ export const ScheduleView: React.FC = () => {
                       cell.date.getMonth() === currentDate.getMonth() &&
                       cell.date.getFullYear() === currentDate.getFullYear();
                     
+                    const today = new Date();
                     const isTodayHighlight =
-                      cell.date.getDate() === 28 &&
-                      cell.date.getMonth() === 4 &&
-                      cell.date.getFullYear() === 2026;
+                      cell.date.getDate() === today.getDate() &&
+                      cell.date.getMonth() === today.getMonth() &&
+                      cell.date.getFullYear() === today.getFullYear();
 
                     const cellDayKey = getDayKey(cell.date);
                     const dayCourses = filteredCourses.filter(c => c.day === cellDayKey);
@@ -1745,10 +1756,11 @@ export const ScheduleView: React.FC = () => {
                   </div>
                   
                   {visibleDays.map((vd) => {
+                    const today = new Date();
                     const isTodayHighlight =
-                      vd.date.getDate() === 28 &&
-                      vd.date.getMonth() === 4 &&
-                      vd.date.getFullYear() === 2026;
+                      vd.date.getDate() === today.getDate() &&
+                      vd.date.getMonth() === today.getMonth() &&
+                      vd.date.getFullYear() === today.getFullYear();
                     
                     const isSelected =
                       vd.date.getDate() === currentDate.getDate() &&
