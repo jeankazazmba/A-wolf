@@ -99,21 +99,10 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
       return { user, accessToken: cachedAccessToken };
     }
 
-    const token = window.prompt("Veuillez coller votre jeton d'accès Google OAuth (ou cliquez sur Annuler pour utiliser un compte de test simulé) :");
-    if (!token) {
-      const useMock = window.confirm("Aucun jeton fourni. Souhaitez-vous utiliser un compte de test simulé pour évaluer l'application ?");
-      if (useMock) {
-        cachedAccessToken = "mock_token_123";
-        localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
-        const user: LocalUser = { displayName: "Utilisateur Test", email: "test@awolf.com" };
-        localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
-        return { user, accessToken: cachedAccessToken };
-      }
-      return null;
-    }
-    cachedAccessToken = token;
+    // Browser fallback: use a local simulated account automatically (no popup)
+    cachedAccessToken = "mock_token_123";
     localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
-    const user: LocalUser = { displayName: "Google User", email: "user@local" };
+    const user: LocalUser = { displayName: "Utilisateur A-Wolf", email: "utilisateur@awolf.local" };
     localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
     return { user, accessToken: cachedAccessToken };
   } catch (error: any) {

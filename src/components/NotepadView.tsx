@@ -124,132 +124,15 @@ const toPascalCase = (str: string): string => {
     return tagColorSchemes[tag.toLowerCase()] || "bg-slate-50 text-slate-500 hover:bg-slate-100/60";
   };
 
-  // Seed default notes or listen to real-time changes
+  // Load saved notes from local storage — no seed data, all data is user-created
   useEffect(() => {
-    const defaultNotes: Note[] = [
-      {
-        id: "startup_1",
-        title: "Idées projet startup",
-        category: "Projets",
-        pinned: true,
-        isFavorite: true,
-        tags: ["startup", "idée", "recherche"],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        relativeTimeCreated: "Créée il y a 2 h",
-        relativeTimeUpdated: "Modifiée il y a 10 min",
-        isStructured: true,
-        problemText: "Les étudiants passent trop de temps à chercher des ressources fiables et à organiser leur apprentissage.",
-        quoteBox: "Comment simplifier et centraliser tout le processus d'apprentissage ?",
-        solutionIntro: "Une plateforme tout-en-un qui :",
-        solutionBullets: [
-          "Propose des parcours personnalisés",
-          "Centralise cours, exercices et notes",
-          "Utilise l'IA pour recommander les meilleures ressources",
-          "Permet de suivre sa progression facilement"
-        ],
-        features: [
-          { id: "feat_1", text: "Parcours d'apprentissage adaptatifs", done: true },
-          { id: "feat_2", text: "Résumé intelligent de contenu", done: true },
-          { id: "feat_3", text: "Suivi de progression & statistiques", done: true },
-          { id: "feat_4", text: "Mode focus intégré", done: true }
-        ],
-        nextSteps: [
-          { id: "step_1", text: "Étude de marché", done: true },
-          { id: "step_2", text: "Wireframes & maquettes", done: false },
-          { id: "step_3", text: "MVP - Version initiale", done: false },
-          { id: "step_4", text: "Tests utilisateurs", done: false }
-        ],
-        content: "Ce projet vise à révolutionner la façon dont les étudiants synthétisent et partagent leurs cours."
-      },
-      {
-        id: "voyage_2",
-        title: "Planification voyage",
-        category: "Personnel",
-        pinned: true,
-        tags: ["important", "à faire"],
-        createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-        relativeTimeCreated: "Créée hier",
-        relativeTimeUpdated: "Modifiée hier",
-        isStructured: false,
-        content: "Plan d'action pour le voyage d'été en Corse et Côte d'Azur.\n\nDestinations retenues :\n- Porto-Vecchio et plages de Santa Giulia\n- Gorges du Verdon en pédalo\n\nÀ réserver :\n- Ferry Toulon-Bastia avant le 15 Juin\n- Logement de vacances avec parking."
-      },
-      {
-        id: "deep_3",
-        title: "Résumé cours Deep Learning",
-        category: "Études",
-        pinned: false,
-        tags: ["recherche", "important"],
-        createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-        relativeTimeCreated: "Créée il y a 5 h",
-        relativeTimeUpdated: "Modifiée il y a 5 h",
-        isStructured: false,
-        content: "Réseaux de neurones convolutifs (CNN) et traitement de l'image :\n- Couches convolutives (filtre de détection de contours).\n- Pooling (Max Pooling pour réduire les dimensions).\n- Couches denses (Fully Connected) pour classification finale via Softmax."
-      },
-      {
-        id: "uiux_4",
-        title: "Inspiration UI/UX",
-        category: "Idées",
-        pinned: false,
-        tags: ["startup", "idée"],
-        createdAt: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 24 * 3600 * 1050).toISOString(),
-        relativeTimeCreated: "Créée il y a 1 jour",
-        relativeTimeUpdated: "Modifiée il y a 1 jour",
-        isStructured: false,
-        content: "Tendances esthétiques recherchées :\n- Bento grid ultra-propre avec des ombres diffuses légères (shadow-sm)\n- Micro-interactions fluides sur boutons et badges\n- Thème clair épuré avec des accents de couleur violette de style moderne, et une interface structurée."
-      },
-      {
-        id: "perso_5",
-        title: "Objectifs personnels",
-        category: "Personnel",
-        pinned: false,
-        tags: ["important", "à faire"],
-        createdAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 2 * 24 * 3600 * 1000).toISOString(),
-        relativeTimeCreated: "Créée il y a 2 jours",
-        relativeTimeUpdated: "Modifiée il y a 2 jours",
-        isStructured: false,
-        content: "Bilan des résolutions trimestrielles :\n- Terminer la maquette fonctionnelle du projet principal.\n- Faire au moins 3 séances de sport de 45 minutes par semaine.\n- S'accorder 30 min de lecture avant de dormir."
-      },
-      {
-        id: "sante_6",
-        title: "Recettes santé",
-        category: "Personnel",
-        pinned: false,
-        tags: ["recherche"],
-        createdAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 3 * 24 * 3600 * 1000).toISOString(),
-        relativeTimeCreated: "Créée il y a 3 jours",
-        relativeTimeUpdated: "Modifiée il y a 3 jours",
-        isStructured: false,
-        content: "Idées repas sains :\n- Salade complète de lentilles, avocat, féta et grenade.\n- Wrap de poulet grillé aux pousses d'épinards frais.\n- Smoothie anti-oxydant aux myrtilles et graines de courge."
-      },
-      {
-        id: "livre_7",
-        title: "Livres à lire",
-        category: "Autre",
-        pinned: false,
-        tags: ["recherche"],
-        createdAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
-        updatedAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
-        relativeTimeCreated: "Créée il y a 1 semaine",
-        relativeTimeUpdated: "Modifiée il y a 1 semaine",
-        isStructured: false,
-        content: "Liste d'ouvrages recommandés :\n- Atomic Habits par James Clear\n- Deep Work de Cal Newport\n- Sprint de Jake Knapp\n- Hooked de Nir Eyal"
-      }
-    ];
-
     const saved = localStorage.getItem("awolf_notepad_notes_v2");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setNotes(parsed);
         if (parsed.length > 0) {
-          const startupNote = parsed.find((n: Note) => n.title.includes("startup")) || parsed[0];
-          setSelectedNote(startupNote);
+          setSelectedNote(parsed[0]);
         }
       } catch (e) {
         setNotes([]);
