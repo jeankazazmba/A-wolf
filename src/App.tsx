@@ -30,7 +30,6 @@ import {
 import { CollabProvider, useCollab } from "./context/CollabContext";
 import { NavigationSidebar } from "./components/NavigationSidebar";
 import { Navbar } from "./components/Navbar";
-import { LoginPage } from "./components/LoginPage";
 import brandLogo from "./assets/logo.png";
 import { ScheduleView } from "./components/ScheduleView";
 import { FocusZone } from "./components/FocusZone";
@@ -567,19 +566,13 @@ export default function App() {
   const [currentTab, setTab] = useState("accueil");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSplash, setShowSplash] = useState(true);
-  const [showLogin, setShowLogin] = useState(false);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-      setShowLogin(true);
     }, 1800);
     return () => clearTimeout(timer);
   }, []);
-
-  const handleLoginSuccess = () => {
-    setShowLogin(false);
-  };
 
   return (
     <CollabProvider>
@@ -621,55 +614,12 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showLogin && !showSplash && (
-          <AppAuthWrapper onLoginSuccess={handleLoginSuccess} />
-        )}
-      </AnimatePresence>
-
-      {!showLogin && !showSplash && (
-        <MainDashboardContent 
-          currentTab={currentTab} 
-          setTab={setTab} 
-          searchQuery={searchQuery} 
-          setSearchQuery={setSearchQuery} 
-        />
-      )}
+      <MainDashboardContent 
+        currentTab={currentTab} 
+        setTab={setTab} 
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery} 
+      />
     </CollabProvider>
-  );
-}
-
-function AppAuthWrapper({ onLoginSuccess }: { onLoginSuccess: () => void }) {
-  const { currentUser, isAuthLoading, loginWithGoogle } = useCollab();
-
-  React.useEffect(() => {
-    if (currentUser && !isAuthLoading) {
-      onLoginSuccess();
-    }
-  }, [currentUser, isAuthLoading, onLoginSuccess]);
-
-  if (isAuthLoading) {
-    return (
-      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center z-50">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center"
-        >
-          <div className="mb-4">
-            <div className="w-12 h-12 mx-auto border-4 border-purple-300 border-t-purple-600 rounded-full animate-spin"></div>
-          </div>
-          <p className="text-white font-medium">Chargement...</p>
-        </motion.div>
-      </div>
-    );
-  }
-
-  return (
-    <LoginPage
-      onLoginSuccess={onLoginSuccess}
-      isLoading={isAuthLoading}
-      onGoogleSignIn={loginWithGoogle}
-    />
   );
 }

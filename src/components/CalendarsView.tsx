@@ -76,57 +76,30 @@ export const CalendarsView: React.FC = () => {
   const [syncToGCal, setSyncToGCal] = useState(true);
   const [authError, setAuthError] = useState<{ code?: string; message?: string; showHelp: boolean } | null>(null);
 
-  // When currentUser changes (from login), update local user state and sync events
+  // Initialize auth listener and restore session
   useEffect(() => {
-    if (currentUser && !isAuthLoading) {
-      setUser(currentUser);
-      // Attempt auto-sync of Google Calendar events when user logs in
-      const autoSync = async () => {
+    const unsubscribe = initAuth(
+      async (firebaseUser, accessToken) => {
+        setUser(firebaseUser);
+        setToken(accessToken);
         try {
           setIsSyncing(true);
-          const accessToken = (window as any).electronAPI?.getGoogleAuthPayload ? await (window as any).electronAPI.getGoogleAuthPayload().then((p: any) => p?.access_token) : null;
-          if (accessToken) {
-            setToken(accessToken);
-            const eventsList = await fetchGoogleCalendarEvents(accessToken);
-            setGoogleEvents(eventsList);
-            triggerNotification("Calendrier synchro", `${eventsList.length} événements Google importés.`, "success");
-          }
-        } catch (err) {
-          console.error("Auto-sync of Google Calendar failed:", err);
+          const eventsList = await fetchGoogleCalendarEvents(accessToken);
+          setGoogleEvents(eventsList);
+          triggerNotification("Agenda Google synchronisé", `${eventsList.length} événements Google importés.`, "success");
+        } catch (e) {
+          console.error("Calendars login sync issues:", e);
         } finally {
           setIsSyncing(false);
         }
-      };
-      autoSync();
-    }
-  }, [currentUser, isAuthLoading, triggerNotification]);
-
-  // Initialize auth listener and restore session (fallback if not already authenticated)
-  useEffect(() => {
-    if (!currentUser && !isAuthLoading) {
-      const unsubscribe = initAuth(
-        async (firebaseUser, accessToken) => {
-          setUser(firebaseUser);
-          setToken(accessToken);
-          try {
-            setIsSyncing(true);
-            const eventsList = await fetchGoogleCalendarEvents(accessToken);
-            setGoogleEvents(eventsList);
-            triggerNotification("Agenda Google synchronisé", `${eventsList.length} événements Google importés.`, "success");
-          } catch (e) {
-            console.error("Calendars login sync issues:", e);
-          } finally {
-            setIsSyncing(false);
-          }
-        },
-        () => {
-          setUser(null);
-          setToken(null);
-        }
-      );
-      return () => unsubscribe();
-    }
-  }, [currentUser, isAuthLoading, triggerNotification]);
+      },
+      () => {
+        setUser(null);
+        setToken(null);
+      }
+    );
+    return () => unsubscribe();
+  }, []);
 
   const handleGoogleLogin = async () => {
     setIsSyncing(true);
