@@ -88,13 +88,28 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
     isSigningIn = true;
 
     if ((window as any).electronAPI?.startGoogleOAuth) {
-      const tokenResp = await (window as any).electronAPI.startGoogleOAuth();
+      // Use the Google Client ID injected at build time via Vite define
+      const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
+      const tokenResp = await (window as any).electronAPI.startGoogleOAuth(clientId);
       if (!tokenResp || !tokenResp.access_token) {
         throw new Error("No access token returned from Electron OAuth");
       }
       cachedAccessToken = tokenResp.access_token;
       await electronSetAuthPayload(tokenResp);
-      const user: LocalUser = { displayName: "Google User", email: "user@local" };
+      // Try to get user info from the token
+      let displayName = "Utilisateur A-Wolf";
+      let email = "utilisateur@awolf.local";
+      try {
+        const userInfoResp = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+          headers: { Authorization: `Bearer ${tokenResp.access_token}` }
+        });
+        if (userInfoResp.ok) {
+          const userInfo = await userInfoResp.json();
+          displayName = userInfo.name || displayName;
+          email = userInfo.email || email;
+        }
+      } catch (_) {}
+      const user: LocalUser = { displayName, email };
       localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
       return { user, accessToken: cachedAccessToken };
     }

@@ -1,7 +1,9 @@
 {
-  "name": "react-example",
+  "name": "a-wolf",
+  "description": "A-Wolf — Gestionnaire de planning étudiant intelligent",
+  "author": "A-Wolf Team",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -22,7 +24,6 @@
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
-    "electron": "^26.0.0",
     "electron-is-dev": "^2.0.0",
     "express": "^4.21.2",
     "keytar": "^7.9.0",
@@ -42,35 +43,44 @@
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
     "tailwindcss": "^4.1.14",
+    "electron": "^26.0.0",
     "electron-builder": "^24.9.0",
     "concurrently": "^8.2.0",
     "wait-on": "^7.0.1",
     "tsx": "^4.22.4",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.3"
-  }
-  ,
+    "typescript": "~5.8.2"
+  },
   "build": {
     "appId": "com.awolf.app",
-    "productName": "A-wolf",
+    "productName": "A-Wolf",
+    "copyright": "Copyright © 2026 A-Wolf",
     "directories": {
-      "buildResources": "assets",
+      "buildResources": "src/assets",
       "output": "dist_electron"
     },
     "files": [
       "dist/**",
       "electron/**",
-      "src/**",
-      "index.html",
+      "node_modules/**",
       "package.json"
     ],
     "win": {
+      "icon": "src/assets/logo.png",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": ["x64"]
         }
-      ]
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "A-Wolf",
+      "language": "1036"
     }
   }
 }
