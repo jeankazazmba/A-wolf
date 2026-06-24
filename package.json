@@ -1,9 +1,9 @@
 {
   "name": "a-wolf",
-  "description": "A-Wolf — Gestionnaire de planning étudiant intelligent",
-  "author": "A-Wolf Team",
   "private": true,
   "version": "1.0.0",
+  "description": "A-Wolf — Espace de travail et emploi du temps universitaire intelligent",
+  "author": "A-Wolf Team",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -18,7 +18,9 @@
     "lint": "tsc --noEmit",
     "pack": "electron-builder --dir --win",
     "dist": "electron-builder --win",
-    "release": "npm run build && npm run dist"
+    "release": "npm run build && npm run dist",
+    "dist:test": "npm run build && electron-builder --win --config.directories.output=test1 --config.productName=A-Wolf-TEST",
+    "dist:build": "npm run build && electron-builder --win --config.directories.output=dist_electron_build --config.productName=A-Wolf"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -48,31 +50,37 @@
     "concurrently": "^8.2.0",
     "wait-on": "^7.0.1",
     "tsx": "^4.22.4",
-    "typescript": "~5.8.2"
-  },
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+  ,
   "build": {
     "appId": "com.awolf.app",
-    "productName": "A-Wolf",
-    "copyright": "Copyright © 2026 A-Wolf",
+    "productName": "A-wolf",
+    "icon": "src/assets/logo(1).ico",
     "directories": {
-      "buildResources": "src/assets",
+      "buildResources": "assets",
       "output": "dist_electron"
     },
     "files": [
       "dist/**",
       "electron/**",
-      "node_modules/**",
-      "package.json"
+      "src/**",
+      "index.html",
+      "package.json",
+      "LICENSE.txt"
     ],
     "win": {
-      "icon": "src/assets/logo.png",
+      "icon": "src/assets/logo(1).ico",
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         }
-      ],
-      "requestedExecutionLevel": "asInvoker"
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -80,7 +88,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "A-Wolf",
-      "language": "1036"
+      "license": "LICENSE.txt",
+      "perMachine": false,
+      "artifactName": "A-Wolf Setup ${version}.${ext}",
+      "installerIcon": "src/assets/logo(1).ico",
+      "uninstallerIcon": "src/assets/logo(1).ico"
     }
   }
 }

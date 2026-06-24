@@ -11,6 +11,7 @@ import {
   Trash2,
   Check,
   User,
+  Settings,
   ExternalLink,
   Menu
 } from "lucide-react";
@@ -109,25 +110,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Action Indicators */}
       <div className="flex items-center gap-4 text-slate-600" id="navbar-actions">
-        {/* Calendar Switcher button */}
+        {/* Settings quick link */}
         <button
-          onClick={() => setTab("schedule")}
+          onClick={() => setTab("settings")}
           className="p-2.5 rounded-xl hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-900 cursor-pointer relative"
-          title="Consulter l'emploi du temps"
+          title="Paramètres"
+          id="navbar-settings-btn"
         >
-          <Calendar className="w-4 h-4" />
-        </button>
-
-        {/* Live Messages Quick Link */}
-        <button
-          onClick={() => setTab("projects")}
-          className="p-2.5 rounded-xl hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-900 cursor-pointer relative"
-          title="Messages et Groupes collaboratifs"
-        >
-          <MessageSquare className="w-4 h-4" />
-          {state.messages.length > 0 && (
-            <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-violet-600 rounded-full border border-white animate-pulse" />
-          )}
+          <Settings className="w-4 h-4" />
         </button>
 
         {/* Notifications push personnalisables Dropdown Container */}
@@ -276,8 +266,12 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-3 hover:bg-slate-100 p-1.5 pr-2 rounded-xl transition-colors cursor-pointer"
             id="navbar-user-trigger"
           >
-            <div className={`w-8 h-8 rounded-full ${userProfile.avatar} flex items-center justify-center text-white font-bold text-xs shadow-sm`}>
-              {userProfile.name.split(" ").map(w => w[0]).join("")}
+            <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center text-white font-bold text-xs shadow-sm ${!userProfile.photoURL ? userProfile.avatar : ""}`}>
+              {userProfile.photoURL ? (
+                <img src={userProfile.photoURL} alt="Profil" className="w-full h-full object-cover" />
+              ) : (
+                userProfile.name.split(" ").map(w => w[0]).join("")
+              )}
             </div>
             <div className="text-left hidden sm:block">
               <span className="block font-bold text-xs text-slate-800 leading-none">{userProfile.name}</span>
@@ -321,20 +315,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <div className="border-t border-slate-100 pt-2.5">
                   <button
                     onClick={() => {
-                      setTab("accueil");
+                      setTab("profile");
                       setIsOpenProfile(false);
                     }}
-                    className="w-full text-left font-medium text-xs text-slate-700 hover:text-violet-600 py-1.5 flex items-center gap-2"
+                    className="w-full text-left font-medium text-xs text-slate-700 hover:text-violet-600 py-1.5 flex items-center gap-2 cursor-pointer"
+                    id="navbar-goto-profile-btn"
                   >
-                    <User className="w-4 h-4 text-slate-400" /> Mon profil de travail
+                    <User className="w-4 h-4 text-slate-400" /> Mon profil
                   </button>
-                  <a
-                    href="https://ai.studio/build"
-                    target="_blank"
-                    className="w-full text-left font-medium text-xs text-slate-700 hover:text-violet-600 py-1.5 flex items-center gap-2"
+                  <button
+                    onClick={() => {
+                      setTab("settings");
+                      setIsOpenProfile(false);
+                    }}
+                    className="w-full text-left font-medium text-xs text-slate-700 hover:text-violet-600 py-1.5 flex items-center gap-2 cursor-pointer"
+                    id="navbar-goto-settings-btn"
                   >
-                    <ExternalLink className="w-4 h-4 text-slate-400" /> AI Studio Build
-                  </a>
+                    <Settings className="w-4 h-4 text-slate-400" /> Paramètres
+                  </button>
                 </div>
 
                 <div className="border-t border-slate-100 pt-2.5 space-y-1">

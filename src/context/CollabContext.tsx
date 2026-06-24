@@ -5,8 +5,9 @@ import { initAuth, googleSignIn, getAccessToken, logout as googleLogout } from "
 interface CollabContextType {
   state: ShareState;
   connectionStatus: "connecting" | "connected" | "disconnected";
-  userProfile: { name: string; email: string; avatar: string; study: string };
-  updateUserProfile: (profile: { name: string; email: string; study: string; avatar: string }) => void;
+  userProfile: { name: string; email: string; avatar: string; study: string; photoURL?: string };
+  updateUserProfile: (profile: { name: string; email: string; study: string; avatar: string; photoURL?: string }) => void;
+  updateProfilePhoto: (dataUrl: string) => void;
   addTask: (title: string, category: "Devoirs" | "Examens" | "Projets" | "Tout", date: string, priority: "Haute" | "Moyenne" | "Basse") => void;
   toggleTask: (id: string) => void;
   addCourse: (course: Omit<Course, "id">) => void;
@@ -22,6 +23,8 @@ interface CollabContextType {
   isAuthLoading: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
+  loginWithCredentials: (username: string, password: string) => Promise<void>;
+  registerLocalAccount: (username: string, password: string, displayName: string) => Promise<void>;
 }
 
 const CollabContext = createContext<CollabContextType | undefined>(undefined);
@@ -49,11 +52,31 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
-  const [userProfile, setUserProfile] = useState({
-    name: "Étudiant",
-    email: "utilisateur@exemple.com",
-    avatar: "bg-violet-600",
-    study: "Étudiant en Informatique",
+  const [userProfile, setUserProfile] = useState<{
+    name: string;
+    email: string;
+    avatar: string;
+    study: string;
+    photoURL?: string;
+  }>(() => {
+    try {
+      const savedPhoto = localStorage.getItem("awolf_user_photo");
+      const savedProfile = localStorage.getItem("awolf_user_profile");
+      const base = savedProfile ? JSON.parse(savedProfile) : {
+        name: "Étudiant",
+        email: "utilisateur@exemple.com",
+        avatar: "bg-violet-600",
+        study: "Étudiant en Informatique",
+      };
+      return { ...base, photoURL: savedPhoto || undefined };
+    } catch {
+      return {
+        name: "Étudiant",
+        email: "utilisateur@exemple.com",
+        avatar: "bg-violet-600",
+        study: "Étudiant en Informatique",
+      };
+    }
   });
 
   // Auth hooks (local-friendly Google auth shim)
@@ -74,6 +97,22 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }
       },
       () => {
+        try {
+          const localUserJson = localStorage.getItem("local_auth_user");
+          if (localUserJson) {
+            const user = JSON.parse(localUserJson);
+            setCurrentUser(user);
+            setIsAuthLoading(false);
+            setUserProfile((prev) => ({
+              ...prev,
+              name: user.displayName || prev.name,
+              email: user.email || prev.email,
+            }));
+            return;
+          }
+        } catch (e) {
+          console.error("Local session parsing failed:", e);
+        }
         setCurrentUser(null);
         setIsAuthLoading(false);
       }
@@ -102,6 +141,7 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const logout = async () => {
     try {
       await googleLogout();
+      localStorage.removeItem("local_auth_user");
       setCurrentUser(null);
       setIsAuthLoading(false);
       triggerNotification("Déconnexion", "Session fermée.", "info");
@@ -115,10 +155,15 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
-  const updateUserProfile = (profile: { name: string; email: string; study: string; avatar: string }) => {
-    setUserProfile(profile);
-    // Push message to chat about profile change to demonstrate collaboration
+  const updateUserProfile = (profile: { name: string; email: string; study: string; avatar: string; photoURL?: string }) => {
+    setUserProfile((prev) => ({ ...prev, ...profile }));
+    localStorage.setItem("awolf_user_profile", JSON.stringify({ name: profile.name, email: profile.email, study: profile.study, avatar: profile.avatar }));
     sendMessage(`👋 Changement d'identité: je m'appelle désormais ${profile.name} (${profile.study}) !`);
+  };
+
+  const updateProfilePhoto = (dataUrl: string) => {
+    setUserProfile((prev) => ({ ...prev, photoURL: dataUrl }));
+    localStorage.setItem("awolf_user_photo", dataUrl);
   };
 
   const addTask = (title: string, category: "Devoirs" | "Examens" | "Projets" | "Tout", date: string, priority: "Haute" | "Moyenne" | "Basse") => {
@@ -214,6 +259,72 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setState((prev) => ({ ...prev, notifications: [] }));
   };
 
+  const loginWithCredentials = async (username: string, password: string) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const accountsJson = localStorage.getItem("local_auth_accounts");
+    const accounts: any[] = accountsJson ? JSON.parse(accountsJson) : [];
+
+    const normalizedUsername = username.trim().toLowerCase();
+    const found = accounts.find((acc) => acc.username.toLowerCase() === normalizedUsername);
+
+    if (!found || found.password !== password) {
+      throw new Error("Nom d'utilisateur ou mot de passe incorrect.");
+    }
+
+    const user = {
+      uid: `local_${found.username}`,
+      displayName: found.displayName,
+      email: found.email || `${found.username}@local`,
+      isLocal: true,
+    };
+    localStorage.setItem("local_auth_user", JSON.stringify(user));
+    setCurrentUser(user);
+    setUserProfile((prev) => ({
+      ...prev,
+      name: user.displayName,
+      email: user.email,
+    }));
+    triggerNotification("Connexion réussie", `Ravi de vous revoir, ${user.displayName} !`, "success");
+  };
+
+  const registerLocalAccount = async (username: string, password: string, displayName: string) => {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+
+    const accountsJson = localStorage.getItem("local_auth_accounts");
+    const accounts: any[] = accountsJson ? JSON.parse(accountsJson) : [];
+
+    const normalizedUsername = username.trim().toLowerCase();
+    if (accounts.some((acc) => acc.username.toLowerCase() === normalizedUsername)) {
+      throw new Error("Ce nom d'utilisateur est déjà utilisé.");
+    }
+
+    const newAcc = {
+      username: username.trim(),
+      password,
+      displayName: displayName.trim(),
+      email: `${username.trim()}@local`,
+    };
+
+    accounts.push(newAcc);
+    localStorage.setItem("local_auth_accounts", JSON.stringify(accounts));
+
+    const user = {
+      uid: `local_${newAcc.username}`,
+      displayName: newAcc.displayName,
+      email: newAcc.email,
+      isLocal: true,
+    };
+    localStorage.setItem("local_auth_user", JSON.stringify(user));
+    setCurrentUser(user);
+    setUserProfile((prev) => ({
+      ...prev,
+      name: user.displayName,
+      email: user.email,
+    }));
+    triggerNotification("Compte créé", `Bienvenue ${user.displayName} !`, "success");
+  };
+
   return (
     <CollabContext.Provider
       value={{
@@ -221,6 +332,7 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         connectionStatus,
         userProfile,
         updateUserProfile,
+        updateProfilePhoto,
         addTask,
         toggleTask,
         addCourse,
@@ -235,6 +347,8 @@ export const CollabProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isAuthLoading,
         loginWithGoogle,
         logout,
+        loginWithCredentials,
+        registerLocalAccount,
       }}
     >
       {children}

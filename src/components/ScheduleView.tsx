@@ -81,7 +81,10 @@ export const ScheduleView: React.FC = () => {
   const [showRooms, setShowRooms] = useState(true);
   const [showNightAgenda, setShowNightAgenda] = useState(true);
   const [viewType, setViewType] = useState<"week" | "day" | "month">("week");
-  const [selectedSemester, setSelectedSemester] = useState("Semestre 2 - 2023/2024");
+  const [selectedSemester, setSelectedSemester] = useState(() => {
+    const curYear = new Date().getFullYear();
+    return `Semestre 2 - ${curYear - 1}/${curYear}`;
+  });
   
   const [isAddingCourse, setIsAddingCourse] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(["Cours", "Études", "Sport", "Personnel", "Autre"]);
@@ -104,6 +107,24 @@ export const ScheduleView: React.FC = () => {
     }
   });
   const [authError, setAuthError] = useState<{ code?: string; message?: string; showHelp: boolean } | null>(null);
+  const [showGoogleAuthOptionModal, setShowGoogleAuthOptionModal] = useState(false);
+  const [inputClientId, setInputClientId] = useState(() => localStorage.getItem("awolf_google_client_id") || "");
+
+  useEffect(() => {
+    const loadElectronClientId = async () => {
+      if ((window as any).electronAPI?.getGoogleOAuthClientId) {
+        try {
+          const configured = await (window as any).electronAPI.getGoogleOAuthClientId();
+          if (configured && !inputClientId) {
+            setInputClientId(configured);
+          }
+        } catch (error) {
+          console.warn("Failed to load Electron Google OAuth Client ID:", error);
+        }
+      }
+    };
+    loadElectronClientId();
+  }, [inputClientId]);
 
   // Initialize auth listener and restore session
   useEffect(() => {
@@ -134,11 +155,11 @@ export const ScheduleView: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
-  const handleGoogleLogin = async () => {
+  const performGoogleLogin = async (clientId?: string) => {
     setIsSyncing(true);
     setAuthError(null);
     try {
-      const result = await googleSignIn();
+      const result = await googleSignIn(clientId);
       if (result) {
         setUser(result.user);
         setToken(result.accessToken);
@@ -189,6 +210,33 @@ export const ScheduleView: React.FC = () => {
     } finally {
       setIsSyncing(false);
     }
+  };
+
+  const handleGoogleLogin = async (clientId?: string) => {
+    const configuredClientId = clientId?.trim() || inputClientId.trim();
+    if (!configuredClientId && (window as any).electronAPI?.getGoogleOAuthClientId) {
+      try {
+        const electronClientId = await (window as any).electronAPI.getGoogleOAuthClientId();
+        if (electronClientId) {
+          return await performGoogleLogin(electronClientId);
+        }
+      } catch (error) {
+        console.warn("Failed to load Electron Google OAuth Client ID:", error);
+      }
+    }
+
+    if (!configuredClientId) {
+      setShowGoogleAuthOptionModal(true);
+      return;
+    }
+
+    localStorage.setItem("awolf_google_client_id", configuredClientId);
+    await performGoogleLogin(configuredClientId);
+  };
+
+  const handleGoogleLoginClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    handleGoogleLogin().catch(console.error);
   };
 
   const handleGoogleLogout = async () => {
@@ -1066,7 +1114,7 @@ export const ScheduleView: React.FC = () => {
           ) : (
             <button
               type="button"
-              onClick={handleGoogleLogin}
+              onClick={handleGoogleLoginClick}
               className="w-full flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 hover:bg-slate-50/80 rounded-xl text-[11px] text-slate-700 font-bold transition-all cursor-pointer shadow-3xs"
             >
               <svg version="1.1" xmlns="http://www.w3.org/2005/svg" viewBox="0 0 48 48" className="w-4 h-4 shrink-0 block">
@@ -1337,8 +1385,64 @@ export const ScheduleView: React.FC = () => {
   };
 
   const exportSchedule = () => {
-    triggerNotification("Emploi du temps exporté", "Le fichier PDF / iCal de votre planning a bien été téléchargé.", "success");
-    alert("Votre emploi du temps a été généré et téléchargé avec succès au format iCal/PDF !");
+    try {
+      let icsContent = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//A-Wolf//Schedule//FR\r\nCALSCALE:GREGORIAN\r\n";
+      filteredCourses.forEach(c => {
+        icsContent += "BEGIN:VEVENT\r\n";
+        icsContent += `SUMMARY:${c.title}\r\n`;
+        icsContent += `LOCATION:${c.room || "Non spécifié"}\r\n`;
+        if (c.description) {
+          icsContent += `DESCRIPTION:${c.description}\r\n`;
+        }
+        
+        icsContent += "RRULE:FREQ=WEEKLY;BYDAY=" + (
+          c.day === "Lun" ? "MO" :
+          c.day === "Mar" ? "TU" :
+          c.day === "Mer" ? "WE" :
+          c.day === "Jeu" ? "TH" :
+          c.day === "Ven" ? "FR" :
+          c.day === "Sam" ? "SA" : "SU"
+        ) + "\r\n";
+        
+        const baseDate = new Date();
+        const dayMap: { [key: string]: number } = { Lun: 1, Mar: 2, Mer: 3, Jeu: 4, Ven: 5, Sam: 6, Dim: 0 };
+        const currentDay = baseDate.getDay();
+        const targetDay = dayMap[c.day] ?? 1;
+        const diff = targetDay - currentDay;
+        baseDate.setDate(baseDate.getDate() + diff);
+        
+        const [sh, sm] = c.startTime.split(":").map(Number);
+        const [eh, em] = c.endTime.split(":").map(Number);
+        
+        const start = new Date(baseDate);
+        start.setHours(sh, sm, 0, 0);
+        const end = new Date(baseDate);
+        end.setHours(eh, em, 0, 0);
+        
+        const formatDateForIcs = (d: Date) => {
+          const pad = (n: number) => String(n).padStart(2, "0");
+          return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+        };
+        
+        icsContent += `DTSTART:${formatDateForIcs(start)}\r\n`;
+        icsContent += `DTEND:${formatDateForIcs(end)}\r\n`;
+        icsContent += "END:VEVENT\r\n";
+      });
+      icsContent += "END:VCALENDAR\r\n";
+      
+      const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "awolf-emploi-du-temps.ics";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      triggerNotification("Exportation réussie", "Votre emploi du temps a été téléchargé au format iCal (.ics) !", "success");
+    } catch (err) {
+      console.error(err);
+      triggerNotification("Erreur d'exportation", "Impossible de générer le fichier iCal.", "warning");
+    }
   };
 
   return (
@@ -2196,6 +2300,95 @@ export const ScheduleView: React.FC = () => {
                   <RefreshCw className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`} />
                   <span>{isSyncing ? "Sync..." : "Recharger"}</span>
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* GOOGLE AUTH OPTION MODAL */}
+      <AnimatePresence>
+        {showGoogleAuthOptionModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white rounded-3xl border border-slate-205 w-full max-w-md p-6 shadow-xl relative space-y-5 text-left"
+            >
+              <button
+                onClick={() => setShowGoogleAuthOptionModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+              >
+                <X className="w-4.5 h-4.5" />
+              </button>
+
+              <div className="space-y-1.5">
+                <h3 className="font-extrabold text-base text-slate-900 font-display flex items-center gap-2">
+                  <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5 block shrink-0">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                  </svg>
+                  <span className="font-extrabold">Connexion Google Agenda</span>
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed font-sans">
+                  Toutes vos données restent 100% locales dans l'application A-Wolf. Choisissez votre méthode de connexion :
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setShowGoogleAuthOptionModal(false);
+                    await performGoogleLogin();
+                  }}
+                  className="w-full text-left p-3.5 rounded-2xl border border-purple-200 bg-purple-50/10 hover:bg-purple-50/20 transition-all flex flex-col gap-1 cursor-pointer"
+                >
+                  <span className="font-extrabold text-xs text-purple-900 font-sans flex items-center gap-1.5">
+                    Mode Simulation (Recommandé pour test)
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium leading-normal font-sans">
+                    Se connecte en local avec un compte étudiant de test. Les événements doivent être ajoutés manuellement pour remplir le calendrier.
+                  </span>
+                </button>
+
+                <div className="p-3.5 rounded-2xl border border-slate-205 bg-slate-50/30 flex flex-col gap-3">
+                  <span className="font-extrabold text-xs text-slate-800 font-sans">
+                    Connexion Réelle (Requiert Client ID)
+                  </span>
+                  <p className="text-[10px] text-slate-500 font-medium leading-normal font-sans">
+                    Utilisez votre propre Google OAuth Client ID pour synchroniser votre véritable compte Google Agenda.
+                  </p>
+                  <div className="space-y-1">
+                    <label className="block text-[9px] uppercase text-slate-450 font-bold tracking-wider">Google OAuth Client ID</label>
+                    <input
+                      type="text"
+                      placeholder="ex: 123456-abcdef.apps.googleusercontent.com"
+                      value={inputClientId}
+                      onChange={(e) => setInputClientId(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-1 focus:ring-purple-500 text-[10.5px] font-semibold font-mono"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!inputClientId.trim()}
+                    onClick={async () => {
+                      localStorage.setItem("awolf_google_client_id", inputClientId.trim());
+                      setShowGoogleAuthOptionModal(false);
+                      await performGoogleLogin(inputClientId.trim());
+                    }}
+                    className={`w-full py-2 rounded-xl text-xs font-black text-center transition-all cursor-pointer ${
+                      inputClientId.trim()
+                        ? "bg-purple-600 text-white hover:bg-purple-700 hover:shadow-md"
+                        : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    Lancer la connexion
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

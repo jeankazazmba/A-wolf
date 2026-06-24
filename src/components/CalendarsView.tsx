@@ -939,50 +939,80 @@ export const CalendarsView: React.FC = () => {
       </div>
 
       {/* ================= BOTTOM METRIC ROW: UNIFIED SYNCHRONISATION REGION ================= */}
-      <div className="bg-gradient-to-r from-purple-50/70 to-indigo-50/70 border border-purple-100 rounded-2xl p-5 shadow-3xs flex flex-col md:flex-row items-center justify-between gap-5 mt-4" id="calendars-sync-block">
-        <div className="flex items-center gap-4 text-left">
-          <div className="w-12 h-12 rounded-xl bg-purple-650 bg-purple-600 text-white flex items-center justify-center text-xl shrink-0 shadow-md shadow-purple-650/15">
-            <CalendarIcon className="w-5 h-5 text-white" />
+      <div className="bg-gradient-to-r from-purple-50/70 to-indigo-50/70 border border-purple-100 rounded-2xl p-5 shadow-3xs flex flex-col gap-4 mt-4" id="calendars-sync-block">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-purple-600/15">
+              <CalendarIcon className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900 font-display">Synchroniser ton calendrier</h3>
+              <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5">
+                {user
+                  ? `Agenda connecté en tant que ${(user as any).email || (user as any).displayName || "Utilisateur Google"}`
+                  : "Connecte ton agenda Google pour tout centraliser au même endroit."}
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-extrabold text-sm text-slate-900 font-display">Synchroniser ton calendrier</h3>
-            <p className="text-[11px] text-slate-500 font-medium leading-relaxed mt-0.5">
-              Connecte ton agenda Google, Outlook ou Apple pour tout centraliser au même endroit.
-            </p>
-          </div>
+
+          {/* Google status pill */}
+          {user && (
+            <div className="flex items-center gap-2 bg-white border border-green-200 text-green-700 text-[10px] font-black px-3 py-1.5 rounded-full shadow-xs shrink-0">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Connecté · {googleEvents.length} événements
+            </div>
+          )}
         </div>
 
-        {/* Buttons to authenticate or ligate agenda platforms */}
-        <div className="flex flex-wrap items-center gap-2.5 cursor-pointer">
-          {/* A. Google Agenda with dynamic sync status connected with googleAuth.ts */}
+        {/* Buttons row */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* A. Google Agenda */}
           <button
             onClick={user ? handleGoogleLogout : handleGoogleLogin}
             disabled={isSyncing}
-            className={`px-4.5 py-3 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-3xs border ${
-              user 
-                ? "bg-white text-slate-900 border-slate-300 shadow-sm" 
-                : "bg-white hover:bg-slate-55 text-slate-700 border-slate-200"
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-xs border disabled:opacity-60 disabled:cursor-not-allowed ${
+              user
+                ? "bg-white text-slate-700 border-slate-200 hover:border-red-200 hover:text-red-600"
+                : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
             }`}
           >
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 block shrink-0">
-              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
-              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
-              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
-              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
-            </svg>
-            <span>{isSyncing ? "Connexion..." : user ? `${user.displayName || "Google"} connecté` : "Google Agenda"}</span>
+            {isSyncing ? (
+              <div className="w-4 h-4 border-2 border-slate-300 border-t-purple-600 rounded-full animate-spin" />
+            ) : (
+              <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-4 h-4 block shrink-0">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+              </svg>
+            )}
+            <span>{isSyncing ? "Connexion..." : user ? "Déconnecter Google" : "Connecter Google Agenda"}</span>
           </button>
+
+          {/* Sync now button — only visible when connected */}
+          {user && token && (
+            <button
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              className="px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-sm shadow-purple-600/20 disabled:opacity-60"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`} />
+              <span>Synchroniser</span>
+            </button>
+          )}
 
           {/* B. Outlook static helper */}
           <button
             onClick={() => {
-              triggerNotification("Connexion Outlook", "La connexion Outlook arrive bientôt dans la version premium de A Wolf !", "info");
+              triggerNotification("Connexion Outlook", "La connexion Outlook arrive bientôt dans la version premium de A-Wolf !", "info");
             }}
-            className="px-4.5 py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-3xs"
+            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-xs"
           >
-            {/* Outlook classic Blue icon */}
             <span className="w-4 h-4 bg-blue-500 rounded-sm text-white text-[9px] font-extrabold flex items-center justify-center">O</span>
             <span>Outlook</span>
+            <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-bold">Bientôt</span>
           </button>
 
           {/* C. Apple Calendar static helper */}
@@ -990,17 +1020,17 @@ export const CalendarsView: React.FC = () => {
             onClick={() => {
               triggerNotification("Connexion Apple", "La synchronisation Apple iCloud Calendar arrive très prochainement !", "info");
             }}
-            className="px-4.5 py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-3xs"
+            className="px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer active:scale-95 hover:scale-[1.02] shadow-xs"
           >
-            {/* Apple custom classic icon */}
-            <span className="w-4 h-4 bg-orange-500 rounded-sm text-white text-[9px] font-extrabold flex items-center justify-center">iCal</span>
+            <span className="w-4 h-4 bg-orange-500 rounded-sm text-white text-[9px] font-extrabold flex items-center justify-center">🍎</span>
             <span>Apple Calendar</span>
+            <span className="text-[9px] bg-slate-100 text-slate-400 px-1.5 py-0.5 rounded-full font-bold">Bientôt</span>
           </button>
         </div>
 
         {/* Auth Help block specifically optimized for iframe settings */}
         {authError?.showHelp && !user && (
-          <div className="w-full p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl mt-2 text-left space-y-1.5 md:hidden">
+          <div className="w-full p-3 bg-amber-50/70 border border-amber-200/60 rounded-xl text-left space-y-1.5">
             <p className="text-[10px] text-amber-700 leading-normal font-semibold">
               ⚠️ L'aperçu intégré bloque les connexions Google. Ouvrez l'application dans un nouvel onglet pour autoriser l'agenda.
             </p>

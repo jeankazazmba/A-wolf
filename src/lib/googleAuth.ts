@@ -79,7 +79,7 @@ export const isRunningInIframe = (): boolean => {
   }
 };
 
-export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: string } | null> => {
+export const googleSignIn = async (clientId?: string): Promise<{ user: LocalUser; accessToken: string } | null> => {
   if (isSigningIn) {
     console.warn("Sign-in already in progress. Ignoring duplicate request.");
     return null;
@@ -88,40 +88,43 @@ export const googleSignIn = async (): Promise<{ user: LocalUser; accessToken: st
     isSigningIn = true;
 
     if ((window as any).electronAPI?.startGoogleOAuth) {
-      // Use the Google Client ID injected at build time via Vite define
-      const clientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || "";
-      const tokenResp = await (window as any).electronAPI.startGoogleOAuth(clientId);
+      const effectiveClientId = clientId || (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+      const tokenResp = await (window as any).electronAPI.startGoogleOAuth(effectiveClientId);
       if (!tokenResp || !tokenResp.access_token) {
         throw new Error("No access token returned from Electron OAuth");
       }
       cachedAccessToken = tokenResp.access_token;
       await electronSetAuthPayload(tokenResp);
-      // Try to get user info from the token
-      let displayName = "Utilisateur A-Wolf";
-      let email = "utilisateur@awolf.local";
+
+      // Fetch real user profile from Google
+      let user: LocalUser = { displayName: "Utilisateur Google", email: "user@google.com" };
       try {
-        const userInfoResp = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-          headers: { Authorization: `Bearer ${tokenResp.access_token}` }
+        const profileResp = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+          headers: { Authorization: `Bearer ${cachedAccessToken}` },
         });
-        if (userInfoResp.ok) {
-          const userInfo = await userInfoResp.json();
-          displayName = userInfo.name || displayName;
-          email = userInfo.email || email;
+        if (profileResp.ok) {
+          const profile = await profileResp.json();
+          user = {
+            displayName: profile.name || profile.given_name || "Utilisateur Google",
+            email: profile.email || "user@google.com",
+            uid: profile.sub,
+          };
         }
-      } catch (_) {}
-      const user: LocalUser = { displayName, email };
+      } catch (profileErr) {
+        console.warn("Could not fetch Google profile:", profileErr);
+      }
+
       localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
       return { user, accessToken: cachedAccessToken };
     }
 
-    // Browser fallback: use a local simulated account automatically (no popup)
+    // Browser fallback: simulated account (no popup in web)
     cachedAccessToken = "mock_token_123";
     localStorage.setItem(GOOGLE_ACCESS_TOKEN_KEY, cachedAccessToken);
     const user: LocalUser = { displayName: "Utilisateur A-Wolf", email: "utilisateur@awolf.local" };
     localStorage.setItem("google_auth_sim_user", JSON.stringify(user));
     return { user, accessToken: cachedAccessToken };
   } catch (error: any) {
-    console.error("Google Auth sign-in failed:", error);
     throw error;
   } finally {
     isSigningIn = false;

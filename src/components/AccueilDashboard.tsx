@@ -11,7 +11,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import { Task, Course, Resource } from "../types";
-
+import greetingBannerImg from "../assets/scholarly_goals_peak.png";
 
 interface AccueilDashboardProps {
   setTab: (tab: string) => void;
@@ -116,26 +116,21 @@ export const AccueilDashboard: React.FC<AccueilDashboardProps> = ({
       {/* 1. TOP SECTION: Greeting Banner (Left) & Focus (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="home-top-grid">
         
-        {/* Left side: Modern welcoming card — pure CSS gradient, no external image */}
-        <div className="lg:col-span-2 relative rounded-2xl overflow-hidden min-h-[190px]" id="greeting-panel-minimal"
-          style={{ background: "linear-gradient(135deg, #f5f3ff 0%, #ede9fe 35%, #ddd6fe 65%, #c4b5fd 100%)" }}
-        >
-          {/* Decorative SVG abstract shapes */}
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 600 190" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-            <circle cx="520" cy="-30" r="130" fill="#a78bfa" opacity="0.18" />
-            <circle cx="580" cy="140" r="90" fill="#7c3aed" opacity="0.12" />
-            <circle cx="-20" cy="160" r="100" fill="#c4b5fd" opacity="0.22" />
-            <ellipse cx="300" cy="200" rx="250" ry="60" fill="#8b5cf6" opacity="0.07" />
-            <circle cx="140" cy="-10" r="60" fill="#ddd6fe" opacity="0.35" />
-            <path d="M420 180 Q480 120 560 160" stroke="#a78bfa" strokeWidth="1.5" fill="none" opacity="0.3" />
-            <path d="M80 0 Q120 60 60 100" stroke="#c4b5fd" strokeWidth="1" fill="none" opacity="0.4" />
-          </svg>
-          <div className="relative z-20 p-6 md:p-8 flex flex-col justify-center h-full">
+        {/* Left side: Modern welcoming card */}
+        <div className="lg:col-span-2 relative rounded-2xl overflow-hidden min-h-[190px] bg-white" id="greeting-panel-minimal">
+          {/* Background image illustration */}
+          <img 
+            src={greetingBannerImg} 
+            alt="Défis et atteinte d'objectifs" 
+            className="absolute inset-0 w-full h-full object-cover object-[center_35%] select-none"
+            referrerPolicy="no-referrer"
+          />
+          <div className="relative z-20 p-6 md:p-8 flex flex-col justify-center h-full text-purple-950">
             <div>
               <h2 className="text-xl md:text-3xl font-black tracking-tight font-display mb-1.5 text-purple-900">
                 Bonjour {userProfile.name} !
               </h2>
-              <p className="text-purple-700/90 text-xs md:text-sm font-bold font-sans leading-relaxed max-w-lg">
+              <p className="text-purple-700/95 text-xs md:text-sm font-bold font-sans leading-relaxed max-w-lg">
                 Chaque défi d'études relevé aujourd'hui est un pas solide vers la réussite de vos examens et l'accomplissement de vos objectifs.
               </p>
             </div>

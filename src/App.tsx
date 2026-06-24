@@ -15,6 +15,7 @@ import {
 import { CollabProvider, useCollab } from "./context/CollabContext";
 import { NavigationSidebar } from "./components/NavigationSidebar";
 import { Navbar } from "./components/Navbar";
+import { TitleBar } from "./components/TitleBar";
 import brandLogo from "./assets/logo.png";
 import { ScheduleView } from "./components/ScheduleView";
 import { FocusZone } from "./components/FocusZone";
@@ -25,6 +26,8 @@ import { CalendarsView } from "./components/CalendarsView";
 import { RemindersView } from "./components/RemindersView";
 import { AccueilDashboard } from "./components/AccueilDashboard";
 import { LoginView } from "./components/LoginView";
+import { ProfileView } from "./components/ProfileView";
+import { SettingsView } from "./components/SettingsView";
 import { Task, Course, Resource, AppNotification } from "./types";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -147,6 +150,10 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
         return <CalendarsView />;
       case "tasks":
         return <TaskCenter />;
+      case "profile":
+        return <ProfileView />;
+      case "settings":
+        return <SettingsView setTab={setTab} />;
       default: {
         return (
           <AccueilDashboard 
@@ -167,43 +174,50 @@ function MainDashboardContent({ currentTab, setTab, searchQuery, setSearchQuery 
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 overflow-hidden font-sans relative">
-      
-      {/* Dynamic left Navigation sidebar */}
-      <NavigationSidebar 
-        currentTab={currentTab} 
-        setTab={setTab} 
-        isCollapsed={isSidebarCollapsed}
-        setIsCollapsed={setIsSidebarCollapsed}
-      />
+    <div className="flex flex-col h-screen bg-slate-50 overflow-hidden font-sans relative">
 
-      {/* Backdrop overlay for mobile screens when expanded */}
-      {!isSidebarCollapsed && (
-        <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-35 lg:hidden cursor-pointer"
-          onClick={() => setIsSidebarCollapsed(true)}
-          id="sidebar-mobile-backdrop"
-        />
-      )}
+      {/* Custom TitleBar with minimize / maximize / close */}
+      <TitleBar />
 
-      {/* Main Content Workspace flow */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        
-        {/* Top Navbar */}
-        <Navbar 
+      {/* Body: sidebar + main content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+
+        {/* Dynamic left Navigation sidebar */}
+        <NavigationSidebar 
+          currentTab={currentTab} 
           setTab={setTab} 
-          searchQuery={searchQuery} 
-          setSearchQuery={setSearchQuery} 
-          isSidebarCollapsed={isSidebarCollapsed}
-          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
         />
 
-        {/* Inner dynamic canvas view */}
-        <main className={`flex-1 p-4 md:p-6 ${["resources", "projects"].includes(currentTab) ? "overflow-hidden" : "overflow-y-auto"}`} id="primary-workspace">
-          {renderFocalTab()}
-        </main>
-      </div>
+        {/* Backdrop overlay for mobile screens when expanded */}
+        {!isSidebarCollapsed && (
+          <div 
+            className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-35 lg:hidden cursor-pointer"
+            onClick={() => setIsSidebarCollapsed(true)}
+            id="sidebar-mobile-backdrop"
+          />
+        )}
 
+        {/* Main Content Workspace flow */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          
+          {/* Top Navbar */}
+          <Navbar 
+            setTab={setTab} 
+            searchQuery={searchQuery} 
+            setSearchQuery={setSearchQuery} 
+            isSidebarCollapsed={isSidebarCollapsed}
+            setIsSidebarCollapsed={setIsSidebarCollapsed}
+          />
+
+          {/* Inner dynamic canvas view */}
+          <main className={`flex-1 p-4 md:p-6 ${["resources", "projects"].includes(currentTab) ? "overflow-hidden" : "overflow-y-auto"}`} id="primary-workspace">
+            {renderFocalTab()}
+          </main>
+        </div>
+
+      </div>
     </div>
   );
 }

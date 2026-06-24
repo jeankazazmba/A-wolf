@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Shield, Lock, FileText, Check, X, ExternalLink, Calendar, HelpCircle } from "lucide-react";
+import { useCollab } from "../context/CollabContext";
 import brandLogo from "../assets/logo.png";
 
 interface LoginViewProps {
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (clientId?: string) => Promise<void>;
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ loginWithGoogle }) => {
@@ -13,22 +14,25 @@ export const LoginView: React.FC<LoginViewProps> = ({ loginWithGoogle }) => {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [shakeCheckbox, setShakeCheckbox] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [showLocalAuthModal, setShowLocalAuthModal] = useState(false);
+  const { loginWithCredentials, registerLocalAccount } = useCollab() as any;
+  const [localUsername, setLocalUsername] = useState("");
+  const [localPassword, setLocalPassword] = useState("");
+  const [localError, setLocalError] = useState(""); // Fix: erreur inline dans le modal
 
-  const handleGoogleClick = async () => {
+  // Ouvre la modale locale après vérification des CGU, et réinitialise les champs
+  const handleLocalAuthOpen = () => {
     if (!acceptedTerms) {
       setShakeCheckbox(true);
       setTimeout(() => setShakeCheckbox(false), 500);
       return;
     }
-    setIsLoggingIn(true);
-    try {
-      await loginWithGoogle();
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsLoggingIn(false);
-    }
+    setLocalUsername("");
+    setLocalPassword("");
+    setLocalError("");
+    setShowLocalAuthModal(true);
   };
+
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden font-sans">
@@ -112,30 +116,35 @@ export const LoginView: React.FC<LoginViewProps> = ({ loginWithGoogle }) => {
           </label>
         </div>
 
-        {/* Google Authentication Button */}
-        <button
-          onClick={handleGoogleClick}
-          disabled={isLoggingIn}
-          className={`w-full py-3.5 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-3 shadow-md active:scale-[0.98] border cursor-pointer ${
-            isLoggingIn 
-              ? "bg-slate-100 text-slate-400 border-slate-200"
-              : acceptedTerms 
-                ? "bg-white hover:bg-slate-50 text-slate-800 border-slate-200/90 shadow-slate-100 hover:shadow-lg hover:shadow-slate-100" 
-                : "bg-white text-slate-400 border-slate-200 opacity-60 hover:opacity-80"
-          }`}
-        >
-          {isLoggingIn ? (
-            <div className="w-5 h-5 border-2 border-slate-300 border-t-purple-600 rounded-full animate-spin" />
-          ) : (
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5 block shrink-0">
+        {/* Bouton Connexion locale */}
+        <div className="w-full mt-4 mb-4 flex flex-col gap-3">
+          <button
+            onClick={handleLocalAuthOpen}
+            className="w-full py-3.5 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-3 shadow-md active:scale-[0.98] border cursor-pointer bg-purple-600 hover:bg-purple-700 text-white border-transparent"
+          >
+            Se connecter / Créer un compte
+          </button>
+        </div>
+
+        {/* Google Authentication Button — Coming Soon */}
+        <div className="w-full relative">
+          <button
+            disabled
+            className="w-full py-3.5 rounded-2xl text-sm font-black flex items-center justify-center gap-3 border border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed opacity-70"
+          >
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-5 h-5 block shrink-0 opacity-50">
               <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
               <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
               <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
               <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
             </svg>
-          )}
-          <span>{isLoggingIn ? "Initialisation..." : "Se connecter avec Google"}</span>
-        </button>
+            <span>Se connecter avec Google</span>
+          </button>
+          {/* Badge Coming Soon */}
+          <span className="absolute -top-2.5 -right-2 bg-amber-400 text-amber-900 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+            Bientôt
+          </span>
+        </div>
 
         {/* Footer info */}
         <div className="flex items-center gap-1.5 mt-8 text-[10px] text-slate-400 font-semibold justify-center">
@@ -284,6 +293,141 @@ export const LoginView: React.FC<LoginViewProps> = ({ loginWithGoogle }) => {
                   Accepter et Fermer
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LOCAL AUTH MODAL */}
+      <AnimatePresence>
+        {showLocalAuthModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-[9999]">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
+              className="bg-white rounded-3xl border border-slate-200 w-full max-w-sm p-6 shadow-2xl relative"
+            >
+              {/* En-tête modal */}
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">Accès local</h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">Créer un compte ou se connecter.</p>
+                </div>
+                <button
+                  onClick={() => setShowLocalAuthModal(false)}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Champs de saisie */}
+              <div className="grid gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Nom d'utilisateur</label>
+                  <input
+                    value={localUsername}
+                    onChange={e => { setLocalUsername(e.target.value); setLocalError(""); }}
+                    onKeyDown={e => e.key === "Enter" && (document.getElementById("local-pw-input") as HTMLInputElement)?.focus()}
+                    placeholder="ex: jean123"
+                    autoFocus
+                    autoComplete="username"
+                    className={`w-full bg-white border rounded-xl px-3 py-2.5 text-slate-800 text-sm outline-none focus:ring-2 focus:ring-purple-400 transition-all ${
+                      localError && !localUsername.trim() ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mot de passe</label>
+                  <input
+                    id="local-pw-input"
+                    value={localPassword}
+                    onChange={e => { setLocalPassword(e.target.value); setLocalError(""); }}
+                    placeholder="••••••••"
+                    type="password"
+                    autoComplete="current-password"
+                    className={`w-full bg-white border rounded-xl px-3 py-2.5 text-slate-800 text-sm outline-none focus:ring-2 focus:ring-purple-400 transition-all ${
+                      localError && !localPassword ? "border-red-400 bg-red-50/30" : "border-slate-200"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Message d'erreur inline */}
+              {localError && (
+                <div className="mt-3 px-3 py-2 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-semibold flex items-center gap-2">
+                  <X className="w-3.5 h-3.5 shrink-0" />
+                  {localError}
+                </div>
+              )}
+
+              {/* Boutons d'action */}
+              <div className="flex flex-col gap-2 mt-4">
+                <button
+                  disabled={isLoggingIn || !localUsername.trim() || !localPassword}
+                  onClick={async () => {
+                    setLocalError("");
+                    if (!localUsername.trim() || !localPassword) {
+                      setLocalError("Veuillez remplir tous les champs.");
+                      return;
+                    }
+                    setIsLoggingIn(true);
+                    try {
+                      await loginWithCredentials(localUsername.trim(), localPassword);
+                      setShowLocalAuthModal(false);
+                    } catch (err) {
+                      setLocalError(err instanceof Error ? err.message : "Erreur de connexion");
+                    } finally {
+                      setIsLoggingIn(false);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-black text-sm transition-all cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {isLoggingIn ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Connexion...
+                    </span>
+                  ) : "Se connecter"}
+                </button>
+                <div className="relative flex items-center">
+                  <div className="flex-1 border-t border-slate-100" />
+                  <span className="mx-3 text-[10px] text-slate-400 font-semibold">ou</span>
+                  <div className="flex-1 border-t border-slate-100" />
+                </div>
+                <button
+                  disabled={isLoggingIn || !localUsername.trim() || !localPassword}
+                  onClick={async () => {
+                    setLocalError("");
+                    if (!localUsername.trim() || !localPassword) {
+                      setLocalError("Veuillez remplir tous les champs.");
+                      return;
+                    }
+                    if (localPassword.length < 4) {
+                      setLocalError("Le mot de passe doit contenir au moins 4 caractères.");
+                      return;
+                    }
+                    setIsLoggingIn(true);
+                    try {
+                      await registerLocalAccount(localUsername.trim(), localPassword, localUsername.trim());
+                      setShowLocalAuthModal(false);
+                    } catch (err) {
+                      setLocalError(err instanceof Error ? err.message : "Erreur lors de la création de compte");
+                    } finally {
+                      setIsLoggingIn(false);
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:bg-slate-100 disabled:text-slate-400 text-slate-700 font-black text-sm transition-all cursor-pointer disabled:cursor-not-allowed"
+                >
+                  Créer un nouveau compte
+                </button>
+              </div>
+
+              <div className="mt-4 text-center">
+                <p className="text-[10px] text-slate-400">Les données sont stockées localement sur votre appareil.</p>
+              </div>
+
             </motion.div>
           </div>
         )}

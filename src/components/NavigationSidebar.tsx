@@ -47,7 +47,7 @@ export const NavigationSidebar: React.FC<SidebarProps> = ({
 
   return (
     <div 
-      className={`h-screen bg-white text-slate-700 flex flex-col justify-between border-r border-slate-200/80 shrink-0 font-sans select-none overflow-hidden transition-all duration-300 z-40
+      className={`h-full bg-white text-slate-700 flex flex-col justify-between border-r border-slate-200/80 shrink-0 font-sans select-none overflow-hidden transition-all duration-300 z-40
         ${isCollapsed 
           ? "w-0 md:w-20 -translate-x-full md:translate-x-0" 
           : "w-68 fixed left-0 top-0 lg:relative translate-x-0 shadow-2xl lg:shadow-none"

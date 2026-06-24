@@ -1,35 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import {defineConfig} from 'vite';
 
-export default defineConfig(({ mode }) => {
-  // Load .env so VITE_* vars are available at build time
-  const env = loadEnv(mode, process.cwd(), '');
-
+export default defineConfig(() => {
   return {
-    // base: './' is required for Electron to load assets via file:// protocol
-    base: './',
+    base: "./",
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
-    define: {
-      // Expose Google OAuth Client ID to the renderer
-      'import.meta.env.VITE_GOOGLE_CLIENT_ID': JSON.stringify(
-        env.VITE_GOOGLE_CLIENT_ID || env.GOOGLE_CLIENT_ID || ''
-      ),
+    build: {
+      sourcemap: false,
+      chunkSizeWarningLimit: 1000,
     },
     server: {
-      port: 3000,
+      // HMR can be disabled via DISABLE_HMR env var when running in special CI or containerized environments.
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-    build: {
-      target: 'esnext',
-      outDir: 'dist',
     },
   };
 });
